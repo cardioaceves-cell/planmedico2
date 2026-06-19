@@ -167,8 +167,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
 
       <div class="reminder-section">
-        <div class="reminder-section-title">Mensaje introductorio (opcional)</div>
-        <textarea class="field-input" id="reminderMessage" placeholder="Ej: Ya han pasado 2 semanas. ¿Cómo te has sentido con tu plan?" style="font-size:13px;min-height:60px"></textarea>
+        <div class="reminder-section-title">Mensaje introductorio</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+          <button class="timing-btn" style="text-align:left;padding:8px 10px;border-radius:8px;width:100%" onclick="setMsg('Han pasado 2 semanas desde que iniciaste tu Plan Cardioprotector. ¿Cómo te has sentido? Es momento de revisar tu evolución inicial y ajustar lo que sea necesario.')">2 semanas — ¿Cómo te has sentido?</button>
+          <button class="timing-btn" style="text-align:left;padding:8px 10px;border-radius:8px;width:100%" onclick="setMsg('Ya pasó un mes desde tu Plan Cardioprotector. Es tiempo de realizar tus estudios de seguimiento para evaluar tu respuesta al tratamiento y actualizar tu plan según tus resultados.')">1 mes — Estudios de seguimiento</button>
+          <button class="timing-btn" style="text-align:left;padding:8px 10px;border-radius:8px;width:100%" onclick="setMsg('Han pasado los primeros meses de tu Plan Cardioprotector. Tu constancia hace la diferencia. Realizaremos una valoración completa para documentar tus avances y optimizar tu tratamiento.')">2-3 meses — Valoración completa</button>
+        </div>
+        <textarea class="field-input" id="reminderMessage" placeholder="O escribe un mensaje personalizado..." style="font-size:13px;min-height:60px"></textarea>
       </div>
 
       <div class="reminder-section">
@@ -240,6 +245,10 @@ function loadPatientsForReminder() {
       sel.appendChild(opt);
     });
   });
+}
+
+function setMsg(text) {
+  document.getElementById('reminderMessage').value = text;
 }
 
 function saveReminder() {
