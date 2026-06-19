@@ -63,6 +63,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .contact-label{font-size:11px;color:#888;margin-bottom:3px}
 .contact-value{font-size:15px;font-weight:600;color:#1a1a1a}
 .contact-link{display:block;margin-top:6px;font-size:12px;color:#1a6cb0;text-decoration:none}
+
+.payment-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#fff}
+.payment-logo{height:70px;width:auto;object-fit:contain;margin-bottom:20px}
+.payment-title{font-size:20px;font-weight:700;color:#1a1a1a;text-align:center;margin-bottom:6px}
+.payment-sub{font-size:13px;color:#888;text-align:center;margin-bottom:32px;line-height:1.6}
+.payment-card{width:100%;max-width:380px;background:#f8f8f8;border-radius:16px;padding:24px;border:1px solid #eee;margin-bottom:16px}
+.payment-input{width:100%;font-size:15px;padding:12px 14px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#1a1a1a;font-family:inherit;outline:none;margin-bottom:12px}
+.payment-input:focus{border-color:#1a6cb0}
+.payment-btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.btn-paypal{background:#0070BA;color:#fff}
+.btn-paypal:active{opacity:0.85}
+.btn-code{background:#1a1a1a;color:#fff}
+.btn-code:active{opacity:0.85}
+.btn-already{background:transparent;color:#1a6cb0;border:1px solid #b3d4f5;font-size:13px;padding:10px}
+.payment-error{color:#c0392b;font-size:13px;text-align:center;margin-top:8px;min-height:18px}
+.payment-step{font-size:12px;color:#888;text-align:center;margin-bottom:16px}
+.code-input{width:100%;font-size:28px;text-align:center;letter-spacing:8px;padding:16px;border:2px solid #ddd;border-radius:10px;background:#fff;font-family:monospace;outline:none;margin-bottom:12px}
+.code-input:focus{border-color:#1a6cb0}
+.back-link{font-size:13px;color:#888;cursor:pointer;text-align:center;margin-top:8px;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -89,38 +108,119 @@ var DATA = null;
 var mealOptTabs = {};
 var notaOpen = {};
 var currentTab = 0;
+var PATIENT_ID = location.pathname.split('/').pop();
+var userEmail = '';
 
 document.getElementById('logoImg').src = '/logo.png';
 
-function renderContacto() {
-  return `<div style="padding-top:8px">
-    <div class="contact-card">
-      <div class="contact-icon wa">💬</div>
-      <div>
-        <div class="contact-label">WhatsApp</div>
-        <div class="contact-value">56 1171 6317</div>
-        <a class="contact-link" href="https://wa.me/5215611716317">Enviar mensaje</a>
-      </div>
-    </div>
-    <div class="contact-card">
-      <div class="contact-icon mail">✉️</div>
-      <div>
-        <div class="contact-label">Correo electrónico</div>
-        <div class="contact-value">cardioaceves@gmail.com</div>
-        <a class="contact-link" href="mailto:cardioaceves@gmail.com">Enviar correo</a>
-      </div>
-    </div>
-    <div style="text-align:center;margin-top:24px;font-size:12px;color:#bbb;line-height:1.8">
-      Dr. Moisés Aceves<br>
-      Cardiología clínica y rehabilitación cardiaca
-    </div>
-  </div>`;
-}
+// Check if already has access in session
+var sessionKey = 'access_' + PATIENT_ID;
+var hasAccess = sessionStorage.getItem(sessionKey) === 'true';
 
 async function init() {
-  var id = location.pathname.split('/').pop();
+  if (hasAccess) {
+    loadPlan();
+  } else {
+    showPaymentScreen();
+  }
+}
+
+function showPaymentScreen() {
+  document.getElementById('tabsBar').style.display = 'none';
+  var mc = document.getElementById('mainContent');
+  mc.className = '';
+  mc.innerHTML = `<div class="payment-screen">
+    <img class="payment-logo" src="/logo.png" alt="Dr. Moises Aceves">
+    <div class="payment-title">Plan Cardioprotector</div>
+    <div class="payment-sub">Dr. Moisés Aceves<br>Cardiología clínica y rehabilitación cardiaca</div>
+    <div class="payment-card">
+      <div class="payment-step">Paso 1 — Ingresa tu correo electrónico</div>
+      <input class="payment-input" id="emailInput" type="email" placeholder="tucorreo@email.com">
+      <button class="payment-btn btn-paypal" id="payBtn">💳 Pagar plan cardioprotector</button>
+      <div class="payment-error" id="payError"></div>
+    </div>
+    <button class="payment-btn btn-already" id="alreadyBtn">Ya pagué — ingresar código</button>
+  </div>`;
+  document.getElementById('payBtn').addEventListener('click', handlePay);
+  document.getElementById('alreadyBtn').addEventListener('click', showCodeScreen);
+}
+
+async function handlePay() {
+  var email = document.getElementById('emailInput').value.trim();
+  var err = document.getElementById('payError');
+  if (!email || !email.includes('@')) { err.textContent = 'Ingresa un correo válido'; return; }
+  userEmail = email;
+  err.textContent = '';
+  document.getElementById('payBtn').textContent = 'Enviando código...';
+  document.getElementById('payBtn').disabled = true;
+
   try {
-    var resp = await fetch('/api/patients/' + id);
+    var resp = await fetch('/api/send-code', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({patientId: PATIENT_ID, email: email})
+    });
+    var result = await resp.json();
+    if (!resp.ok) throw new Error(result.error);
+
+    // Open PayPal
+    window.open('https://paypal.me/MOISESACEVES80?locale.x=es_XC&country.x=MX', '_blank');
+
+    // Show code screen
+    showCodeScreen();
+  } catch(e) {
+    document.getElementById('payBtn').textContent = 'Pagar plan cardioprotector';
+    document.getElementById('payBtn').disabled = false;
+    document.getElementById('payError').textContent = 'Error: ' + e.message;
+  }
+}
+
+function showCodeScreen() {
+  document.getElementById('mainContent').innerHTML = `<div class="payment-screen">
+    <img class="payment-logo" src="/logo.png" alt="Dr. Moises Aceves">
+    <div class="payment-title">Ingresa tu código</div>
+    <div class="payment-sub">Te enviamos un código de 6 dígitos<br>a tu correo electrónico</div>
+    <div class="payment-card">
+      <input class="payment-input" id="emailInput2" type="email" placeholder="tucorreo@email.com" value="">
+      <input class="code-input" id="codeInput" type="tel" maxlength="6" placeholder="000000">
+      <button class="payment-btn btn-code" id="verifyBtn">Acceder al plan</button>
+      <div class="payment-error" id="codeError"></div>
+    </div>
+    <div class="back-link" id="backLink">Volver</div>
+  </div>`;
+  if (userEmail) document.getElementById('emailInput2').value = userEmail;
+  document.getElementById('verifyBtn').addEventListener('click', verifyCode);
+  document.getElementById('backLink').addEventListener('click', showPaymentScreen);
+}
+
+async function verifyCode() {
+  var email = document.getElementById('emailInput2').value.trim();
+  var code = document.getElementById('codeInput').value.trim();
+  var err = document.getElementById('codeError');
+  if (!email || !code || code.length < 6) { err.textContent = 'Ingresa tu correo y el código de 6 dígitos'; return; }
+  document.getElementById('verifyBtn').textContent = 'Verificando...';
+  document.getElementById('verifyBtn').disabled = true;
+
+  try {
+    var resp = await fetch('/api/verify-code', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({patientId: PATIENT_ID, email: email, code: code})
+    });
+    var result = await resp.json();
+    if (!resp.ok) throw new Error(result.error);
+    sessionStorage.setItem(sessionKey, 'true');
+    loadPlan();
+  } catch(e) {
+    document.getElementById('verifyBtn').textContent = 'Acceder al plan';
+    document.getElementById('verifyBtn').disabled = false;
+    err.textContent = result ? result.error : 'Código incorrecto';
+  }
+}
+
+async function loadPlan() {
+  try {
+    var resp = await fetch('/api/patients/' + PATIENT_ID);
     if (!resp.ok) throw new Error('not found');
     var result = await resp.json();
     DATA = result.data;
@@ -152,9 +252,7 @@ function renderTab(i) {
 function bindEvents() {
   document.querySelectorAll('[data-meal-key]').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      var key = this.getAttribute('data-meal-key');
-      var idx = parseInt(this.getAttribute('data-meal-idx'));
-      mealOptTabs[key] = idx;
+      mealOptTabs[this.getAttribute('data-meal-key')] = parseInt(this.getAttribute('data-meal-idx'));
       renderTab(currentTab);
     });
   });
@@ -186,8 +284,7 @@ function renderReceta() {
   var d = DATA;
   var meds = '';
   d.meds.filter(function(m){ return m.name; }).forEach(function(m) {
-    meds += '<div class="med-card">';
-    meds += '<div class="med-name">' + m.name + '</div>';
+    meds += '<div class="med-card"><div class="med-name">' + m.name + '</div>';
     meds += '<div class="med-detail">' + val(m.dose) + ' - ' + val(m.freq) + '</div>';
     if (m.notes) meds += '<div class="med-detail" style="margin-top:4px;color:#888">' + m.notes + '</div>';
     meds += '</div>';
@@ -202,10 +299,7 @@ function renderReceta() {
   html += '<div class="field-row" style="margin-top:8px"><div class="field-label">Diagnostico</div><div class="field-value">' + val(d.patient.dx) + '</div></div>';
   html += '</div>';
   html += '<div class="section"><div class="section-title">Medicamentos</div>' + meds + '</div>';
-  if (d.indications) {
-    html += '<div class="section"><div class="section-title">Indicaciones especiales</div>';
-    html += '<div class="field-value" style="font-size:13px;line-height:1.6;color:#444">' + d.indications + '</div></div>';
-  }
+  if (d.indications) html += '<div class="section"><div class="section-title">Indicaciones especiales</div><div class="field-value" style="font-size:13px;line-height:1.6;color:#444">' + d.indications + '</div></div>';
   return html;
 }
 
@@ -219,14 +313,11 @@ function renderNutricion() {
     var cur = mealOptTabs[key];
     var tabBtns = '';
     for (var i=0; i<4; i++) {
-      var active = (cur===i) ? 'active' : '';
-      tabBtns += '<button class="opt-tab ' + active + '" data-meal-key="' + key + '" data-meal-idx="' + i + '">Op. ' + (i+1) + '</button>';
+      tabBtns += '<button class="opt-tab ' + (cur===i?'active':'') + '" data-meal-key="' + key + '" data-meal-idx="' + i + '">Op. ' + (i+1) + '</button>';
     }
-    meals += '<div class="meal-block">';
-    meals += '<div class="meal-title">' + MEAL_LABELS[key] + '</div>';
+    meals += '<div class="meal-block"><div class="meal-title">' + MEAL_LABELS[key] + '</div>';
     meals += '<div class="options-tabs">' + tabBtns + '</div>';
-    meals += '<div class="opt-content">' + (opts[cur] || '<span style="color:#bbb">Sin contenido</span>') + '</div>';
-    meals += '</div>';
+    meals += '<div class="opt-content">' + (opts[cur] || '<span style="color:#bbb">Sin contenido</span>') + '</div></div>';
   });
   var statsData = [['Energia',n.kcal,'kcal/dia'],['Proteina',n.protein,'g/dia'],['Hidratos',n.carbs,'g/dia'],['Grasas',n.fat,'%'],['Fibra',n.fiber,'g/dia'],['Sodio',n.sodium,'g/dia']];
   var html = '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">';
@@ -250,23 +341,28 @@ function renderEjercicio() {
       var isOpen = notaOpen[id] || false;
       rows += '<tr><td><div>' + row[0] + '</div>';
       if (nota) {
-        rows += '<button class="nota-toggle" id="notabtn-' + id + '" data-toggle-nota="' + id + '">' + (isOpen ? 'Ocultar nota' : 'Ver nota tecnica') + '</button>';
+        rows += '<button class="nota-toggle" id="notabtn-' + id + '" data-toggle-nota="' + id + '">' + (isOpen?'Ocultar nota':'Ver nota tecnica') + '</button>';
         rows += '<div class="nota-body ' + (isOpen?'open':'') + '" id="nota-' + id + '">' + nota + '</div>';
       }
       rows += '</td><td style="text-align:center">' + (row[1]||'—') + '</td><td style="text-align:center">' + (row[2]||'—') + '</td><td style="text-align:center">' + (row[3]||'—') + '</td></tr>';
     });
     var typeLabel = day.type === 'fuerza' ? 'Fuerza' : 'Cardio';
-    days += '<div class="exercise-day">';
-    days += '<div class="day-header" data-toggle-day="' + di + '">';
+    days += '<div class="exercise-day"><div class="day-header" data-toggle-day="' + di + '">';
     days += '<span class="day-title">' + day.title + '</span>';
     days += '<div style="display:flex;align-items:center;gap:8px"><span class="day-type ' + day.type + '">' + typeLabel + '</span><span class="chevron" id="chev' + di + '">v</span></div>';
-    days += '</div>';
-    days += '<div class="day-body" id="dayBody' + di + '"><table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table></div>';
-    days += '</div>';
+    days += '</div><div class="day-body" id="dayBody' + di + '"><table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table></div></div>';
   });
   var html = '<div class="section"><div class="section-title">Programa semanal</div>' + days + '</div>';
   if (ex.weeks) html += '<div class="section"><div class="section-title">Duracion</div><div class="field-value">Programa de <strong>' + ex.weeks + '</strong> semanas</div></div>';
   return html;
+}
+
+function renderContacto() {
+  return '<div style="padding-top:8px">' +
+    '<div class="contact-card"><div class="contact-icon wa">💬</div><div><div class="contact-label">WhatsApp</div><div class="contact-value">56 1171 6317</div><a class="contact-link" href="https://wa.me/5215611716317">Enviar mensaje</a></div></div>' +
+    '<div class="contact-card"><div class="contact-icon mail">✉️</div><div><div class="contact-label">Correo electrónico</div><div class="contact-value">cardioaceves@gmail.com</div><a class="contact-link" href="mailto:cardioaceves@gmail.com">Enviar correo</a></div></div>' +
+    '<div style="text-align:center;margin-top:24px;font-size:12px;color:#bbb;line-height:1.8">Dr. Moisés Aceves<br>Cardiología clínica y rehabilitación cardiaca</div>' +
+    '</div>';
 }
 
 init();
