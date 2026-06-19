@@ -2,20 +2,13 @@ const express = require('express');
 const path = require('path');
 const {Client} = require('pg');
 const {nanoid} = require('nanoid');
-const nodemailer = require('nodemailer');
+const {Resend} = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 const db = new Client({connectionString: process.env.DATABASE_URL, ssl: {rejectUnauthorized: false}});
-
-const mailer = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'cardioaceves@gmail.com',
-    pass: process.env.GMAIL_PASS || 'hysmqmcldgcyrkyhh'
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function initDB() {
   await db.connect();
@@ -38,7 +31,6 @@ async function initDB() {
 app.use(express.json({limit: '5mb'}));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Save patient
 app.post('/api/patients', async (req, res) => {
   try {
     const {data} = req.body;
@@ -49,7 +41,6 @@ app.post('/api/patients', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-// Get patient
 app.get('/api/patients/:id', async (req, res) => {
   try {
     const r = await db.query('SELECT * FROM patients WHERE id = $1', [req.params.id]);
@@ -58,7 +49,6 @@ app.get('/api/patients/:id', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-// List patients
 app.get('/api/patients', async (req, res) => {
   try {
     const r = await db.query('SELECT id, data, created_at FROM patients ORDER BY created_at DESC');
@@ -71,7 +61,6 @@ app.get('/api/patients', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-// Delete patient
 app.delete('/api/patients/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM patients WHERE id = $1', [req.params.id]);
@@ -79,28 +68,23 @@ app.delete('/api/patients/:id', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-// Send access code
 app.post('/api/send-code', async (req, res) => {
   try {
     const {patientId, email} = req.body;
     if (!patientId || !email) return res.status(400).json({error: 'Faltan datos'});
 
-    // Check patient exists
     const p = await db.query('SELECT id FROM patients WHERE id = $1', [patientId]);
     if (!p.rows.length) return res.status(404).json({error: 'Plan no encontrado'});
 
-    // Generate 6-digit code
     const code = String(Math.floor(100000 + Math.random() * 900000));
 
-    // Save code
     await db.query(
       'INSERT INTO access_codes (patient_id, email, code) VALUES ($1, $2, $3)',
       [patientId, email.toLowerCase(), code]
     );
 
-    // Send email
-    await mailer.sendMail({
-      from: '"Dr. Moisés Aceves" <cardioaceves@gmail.com>',
+    await resend.emails.send({
+      from: 'Dr. Moisés Aceves <onboarding@resend.dev>',
       to: email,
       subject: 'Tu código de acceso — Plan Cardioprotector',
       html: `
@@ -125,7 +109,6 @@ app.post('/api/send-code', async (req, res) => {
   }
 });
 
-// Verify access code
 app.post('/api/verify-code', async (req, res) => {
   try {
     const {patientId, email, code} = req.body;
@@ -134,8 +117,6 @@ app.post('/api/verify-code', async (req, res) => {
       [patientId, email.toLowerCase(), code]
     );
     if (!r.rows.length) return res.status(401).json({error: 'Código incorrecto o expirado'});
-
-    // Mark as used
     await db.query('UPDATE access_codes SET used = TRUE WHERE id = $1', [r.rows[0].id]);
     res.json({ok: true});
   } catch(e) { res.status(500).json({error: e.message}); }
