@@ -61,6 +61,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('nuevo')">+ Nuevo paciente</button>
     <button class="tab-btn" onclick="showTab('lista')">Mis pacientes</button>
+    <button class="tab-btn" onclick="showTab('codigos')">🔑 Códigos</button>
   </div>
 
   <div id="tab-nuevo">
@@ -89,6 +90,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
   </div>
+
+  <div id="tab-codigos" style="display:none">
+    <div class="card">
+      <div class="card-title">Códigos pendientes de enviar</div>
+      <div style="font-size:12px;color:#888;margin-bottom:12px">Estos pacientes pagaron y esperan su código por WhatsApp</div>
+      <div id="codesList"><div class="empty">Cargando...</div></div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -103,10 +112,39 @@ document.getElementById('whatsappBtn').addEventListener('click', shareWhatsApp);
 function showTab(tab) {
   document.getElementById('tab-nuevo').style.display = tab === 'nuevo' ? 'block' : 'none';
   document.getElementById('tab-lista').style.display = tab === 'lista' ? 'block' : 'none';
+  document.getElementById('tab-codigos').style.display = tab === 'codigos' ? 'block' : 'none';
   var btns = document.querySelectorAll('.tab-btn');
   btns[0].classList.toggle('active', tab === 'nuevo');
   btns[1].classList.toggle('active', tab === 'lista');
+  btns[2].classList.toggle('active', tab === 'codigos');
   if (tab === 'lista') loadPatients();
+  if (tab === 'codigos') loadCodes();
+}
+
+function loadCodes() {
+  var list = document.getElementById('codesList');
+  fetch('/api/codes')
+  .then(function(r) { return r.json(); })
+  .then(function(codes) {
+    if (!codes.length) { list.innerHTML = '<div class="empty">Sin códigos pendientes</div>'; return; }
+    var html = '';
+    codes.forEach(function(c) {
+      var date = new Date(c.createdAt).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+      var waMsg = encodeURIComponent('Hola, tu código de acceso al Plan Cardioprotector es: ' + c.code + '. Ingrésalo en la app para ver tu plan.');
+      html += '<div class="patient-item" style="flex-direction:column;align-items:flex-start;gap:8px">';
+      html += '<div style="display:flex;align-items:center;gap:12px;width:100%">';
+      html += '<div class="patient-avatar">' + (c.name||'?').split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase() + '</div>';
+      html += '<div class="patient-info"><div class="patient-name">' + c.name + '</div>';
+      html += '<div class="patient-dx">' + c.email + '</div>';
+      html += '<div class="patient-date">' + date + '</div></div>';
+      html += '<div style="font-size:24px;font-weight:700;letter-spacing:4px;color:#1a4f8a;background:#EBF4FF;padding:6px 12px;border-radius:8px">' + c.code + '</div>';
+      html += '</div>';
+      html += '<a href="https://wa.me/?text=' + waMsg + '" style="width:100%;padding:8px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;text-align:center;text-decoration:none;display:block">📱 Enviar por WhatsApp</a>';
+      html += '</div>';
+    });
+    list.innerHTML = html;
+  })
+  .catch(function() { list.innerHTML = '<div class="empty">Error al cargar</div>'; });
 }
 
 function savePatient() {
