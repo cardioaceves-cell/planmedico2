@@ -46,6 +46,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tab-btn{flex:1;padding:9px;border:none;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
 .tab-btn.active{background:#1a6cb0;color:#fff}
 .tab-btn:not(.active){background:#f0f2f5;color:#555}
+
+.reminder-section{background:#f8f8f8;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #eee}
+.reminder-section-title{font-size:12px;font-weight:600;color:#1a6cb0;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em}
+.study-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
+.study-check{display:flex;align-items:center;gap:6px;font-size:12px;color:#444;cursor:pointer;padding:4px}
+.study-check input{width:16px;height:16px;cursor:pointer;flex-shrink:0}
+.timing-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.timing-btn{padding:6px 12px;border-radius:20px;border:1px solid #ddd;font-size:12px;cursor:pointer;font-family:inherit;background:#fff;color:#555}
+.timing-btn.active{background:#1a6cb0;color:#fff;border-color:#1a6cb0}
+.action-checks{display:flex;flex-direction:column;gap:6px}
+.action-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#444;cursor:pointer}
+.action-check input{width:16px;height:16px;cursor:pointer}
+.reminder-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.reminder-item{background:#EBF4FF;border-radius:8px;padding:10px 12px;border:1px solid #b3d4f5;display:flex;align-items:center;justify-content:space-between}
+.reminder-item-info{font-size:12px;color:#1a4f8a;line-height:1.5}
+.reminder-del{background:none;border:none;color:#bbb;cursor:pointer;font-size:16px;padding:0 4px}
+.add-reminder-btn{width:100%;padding:10px;background:#1a6cb0;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
+.field-input{width:100%;font-size:14px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;color:#1a1a1a;font-family:inherit;outline:none}
 </style>
 </head>
 <body>
@@ -62,6 +80,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="tab-btn active" onclick="showTab('nuevo')">+ Nuevo paciente</button>
     <button class="tab-btn" onclick="showTab('lista')">Mis pacientes</button>
     <button class="tab-btn" onclick="showTab('codigos')">🔑 Códigos</button>
+    <button class="tab-btn" onclick="showTab('recordatorios')">🔔 Seguimiento</button>
   </div>
 
   <div id="tab-nuevo">
@@ -98,6 +117,73 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="codesList"><div class="empty">Cargando...</div></div>
     </div>
   </div>
+
+  <div id="tab-recordatorios" style="display:none">
+    <div class="card">
+      <div class="card-title">Configurar recordatorio de seguimiento</div>
+      <div style="font-size:12px;color:#888;margin-bottom:14px">Selecciona el paciente, los estudios y cuándo mostrar el recordatorio en su app</div>
+
+      <div class="reminder-section">
+        <div class="reminder-section-title">Paciente</div>
+        <select class="field-input" id="reminderPatient" style="font-size:13px">
+          <option value="">Selecciona un paciente...</option>
+        </select>
+      </div>
+
+      <div class="reminder-section">
+        <div class="reminder-section-title">Temporalidad</div>
+        <div class="timing-btns" id="timingBtns">
+          <button class="timing-btn" data-days="14" onclick="selectTiming(this,'14')">2 semanas</button>
+          <button class="timing-btn" data-days="30" onclick="selectTiming(this,'30')">1 mes</button>
+          <button class="timing-btn" data-days="60" onclick="selectTiming(this,'60')">2 meses</button>
+          <button class="timing-btn" data-days="90" onclick="selectTiming(this,'90')">3 meses</button>
+          <button class="timing-btn" data-date onclick="selectTiming(this,'date')">Fecha específica</button>
+        </div>
+        <input class="field-input" type="date" id="reminderDate" style="display:none;font-size:13px;margin-top:6px">
+      </div>
+
+      <div class="reminder-section">
+        <div class="reminder-section-title">Estudios solicitados</div>
+        <div class="study-grid">
+          <label class="study-check"><input type="checkbox" value="Inbody"> Inbody</label>
+          <label class="study-check"><input type="checkbox" value="Rx de tórax"> Rx de tórax</label>
+          <label class="study-check"><input type="checkbox" value="Biometría hemática completa"> Biometría hemática</label>
+          <label class="study-check"><input type="checkbox" value="Química sanguínea (glucosa, urea, BUN, creatinina, ácido úrico)"> Química sanguínea</label>
+          <label class="study-check"><input type="checkbox" value="Electrolitos (sodio, potasio, cloro)"> Electrolitos</label>
+          <label class="study-check"><input type="checkbox" value="Perfil de lípidos (colesterol total, triglicéridos, HDL, LDL)"> Perfil de lípidos</label>
+          <label class="study-check"><input type="checkbox" value="Hemoglobina glucosilada (HbA1c)"> HbA1c</label>
+          <label class="study-check"><input type="checkbox" value="Perfil tiroideo (TSH y T4 libre)"> Perfil tiroideo</label>
+          <label class="study-check"><input type="checkbox" value="Examen general de orina"> EGO</label>
+          <label class="study-check"><input type="checkbox" value="Cinética de hierro"> Cinética de hierro</label>
+          <label class="study-check"><input type="checkbox" value="Pruebas de función hepática"> Función hepática</label>
+          <label class="study-check"><input type="checkbox" value="Tiempos de coagulación"> Tiempos de coagulación</label>
+          <label class="study-check"><input type="checkbox" value="Albúmina/creatinina urinaria"> Albúmina/creatinina</label>
+          <label class="study-check"><input type="checkbox" value="Vitamina B12 (HIDROXI)"> Vitamina B12</label>
+        </div>
+        <div style="margin-top:8px">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">Otros:</div>
+          <input class="field-input" id="otrosEstudios" placeholder="Especifica otros estudios..." style="font-size:13px">
+        </div>
+      </div>
+
+      <div class="reminder-section">
+        <div class="reminder-section-title">Mensaje introductorio (opcional)</div>
+        <textarea class="field-input" id="reminderMessage" placeholder="Ej: Ya han pasado 2 semanas. ¿Cómo te has sentido con tu plan?" style="font-size:13px;min-height:60px"></textarea>
+      </div>
+
+      <div class="reminder-section">
+        <div class="reminder-section-title">Acciones disponibles para el paciente</div>
+        <div class="action-checks">
+          <label class="action-check"><input type="checkbox" id="actionValoracion"> 📋 Enviar resultados para completar mi valoración</label>
+          <label class="action-check"><input type="checkbox" id="actionActualizar"> 🔄 Enviar resultados para actualizar mi plan</label>
+          <label class="action-check"><input type="checkbox" id="actionCita"> 📅 Agendar cita de seguimiento</label>
+        </div>
+      </div>
+
+      <button class="add-reminder-btn" onclick="saveReminder()">+ Guardar recordatorio</button>
+      <div id="reminderSaved" style="color:#1a7a3f;font-size:13px;text-align:center;margin-top:8px;display:none">✓ Recordatorio guardado</div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -113,12 +199,95 @@ function showTab(tab) {
   document.getElementById('tab-nuevo').style.display = tab === 'nuevo' ? 'block' : 'none';
   document.getElementById('tab-lista').style.display = tab === 'lista' ? 'block' : 'none';
   document.getElementById('tab-codigos').style.display = tab === 'codigos' ? 'block' : 'none';
+  document.getElementById('tab-recordatorios').style.display = tab === 'recordatorios' ? 'block' : 'none';
   var btns = document.querySelectorAll('.tab-btn');
   btns[0].classList.toggle('active', tab === 'nuevo');
   btns[1].classList.toggle('active', tab === 'lista');
   btns[2].classList.toggle('active', tab === 'codigos');
+  btns[3].classList.toggle('active', tab === 'recordatorios');
   if (tab === 'lista') loadPatients();
   if (tab === 'codigos') loadCodes();
+  if (tab === 'recordatorios') loadPatientsForReminder();
+}
+
+var selectedDays = null;
+var selectedDateType = null;
+
+function selectTiming(btn, val) {
+  document.querySelectorAll('.timing-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  if (val === 'date') {
+    selectedDays = null;
+    selectedDateType = 'date';
+    document.getElementById('reminderDate').style.display = 'block';
+  } else {
+    selectedDays = parseInt(val);
+    selectedDateType = 'days';
+    document.getElementById('reminderDate').style.display = 'none';
+  }
+}
+
+function loadPatientsForReminder() {
+  fetch('/api/patients')
+  .then(function(r){ return r.json(); })
+  .then(function(patients) {
+    var sel = document.getElementById('reminderPatient');
+    sel.innerHTML = '<option value="">Selecciona un paciente...</option>';
+    patients.forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function saveReminder() {
+  var patientId = document.getElementById('reminderPatient').value;
+  if (!patientId) { alert('Selecciona un paciente'); return; }
+  if (!selectedDays && selectedDateType !== 'date') { alert('Selecciona la temporalidad'); return; }
+
+  var studies = [];
+  document.querySelectorAll('.study-check input:checked').forEach(function(cb){ studies.push(cb.value); });
+  var otros = document.getElementById('otrosEstudios').value.trim();
+  if (otros) studies.push(otros);
+
+  var reminder = {
+    id: Date.now(),
+    active: true,
+    type: selectedDateType,
+    days: selectedDays,
+    date: selectedDateType === 'date' ? document.getElementById('reminderDate').value : null,
+    studies: studies,
+    message: document.getElementById('reminderMessage').value.trim(),
+    actions: {
+      valoracion: document.getElementById('actionValoracion').checked,
+      actualizar: document.getElementById('actionActualizar').checked,
+      cita: document.getElementById('actionCita').checked
+    }
+  };
+
+  // Save reminder via API
+  fetch('/api/reminders/' + patientId, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(reminder)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function() {
+    document.getElementById('reminderSaved').style.display = 'block';
+    setTimeout(function(){ document.getElementById('reminderSaved').style.display = 'none'; }, 3000);
+    // Reset form
+    document.querySelectorAll('.study-check input').forEach(function(cb){ cb.checked = false; });
+    document.getElementById('otrosEstudios').value = '';
+    document.getElementById('reminderMessage').value = '';
+    document.getElementById('actionValoracion').checked = false;
+    document.getElementById('actionActualizar').checked = false;
+    document.getElementById('actionCita').checked = false;
+    document.querySelectorAll('.timing-btn').forEach(function(b){ b.classList.remove('active'); });
+    selectedDays = null; selectedDateType = null;
+  })
+  .catch(function(e){ alert('Error: ' + e.message); });
 }
 
 function loadCodes() {
