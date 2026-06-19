@@ -3,18 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Editor — Dr. Moisés Aceves</title>
+<title>Editor — Dr. Moises Aceves</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a1a;min-height:100vh}
 .header{background:#fff;border-bottom:1px solid #e8e8e8;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
 .logo{height:40px;width:auto;object-fit:contain}
-.header-info{flex:1}
 .header-name{font-size:14px;font-weight:600;color:#1a1a1a}
 .header-sub{font-size:11px;color:#888}
 .container{max-width:600px;margin:0 auto;padding:16px}
 .card{background:#fff;border-radius:14px;padding:16px;margin-bottom:16px;border:1px solid #e8e8e8}
 .card-title{font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px}
+.field-input{width:100%;font-size:14px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;color:#1a1a1a;font-family:inherit;outline:none}
+.field-input:focus{border-color:#1a6cb0;background:#fff}
 .import-area{width:100%;min-height:140px;font-size:12px;padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fafafa;color:#1a1a1a;font-family:monospace;outline:none;resize:vertical;line-height:1.5}
 .import-area:focus{border-color:#1a6cb0;background:#fff}
 .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
@@ -22,8 +23,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-gray{background:#f0f2f5;color:#555;border:1px solid #ddd}
 .error{color:#c0392b;font-size:13px;margin-top:8px;text-align:center}
 .hint{font-size:12px;color:#aaa;margin-top:10px;line-height:1.6;text-align:center}
-.patient-list{display:flex;flex-direction:column;gap:8px}
-.patient-item{background:#f8f9fb;border-radius:10px;padding:12px 14px;border:1px solid #eee;display:flex;align-items:center;gap:12px}
+.patient-item{background:#f8f9fb;border-radius:10px;padding:12px 14px;border:1px solid #eee;display:flex;align-items:center;gap:12px;margin-bottom:8px}
 .patient-avatar{width:38px;height:38px;border-radius:50%;background:#1a6cb0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;flex-shrink:0}
 .patient-info{flex:1;min-width:0}
 .patient-name{font-size:14px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -42,45 +42,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-copy{padding:8px 14px;background:#1a7a3f;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 22px;border-radius:22px;font-size:13px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:100;white-space:nowrap}
 .toast.show{opacity:1}
-.tabs{display:flex;gap:8px;margin-bottom:16px}
-.tab-btn{flex:1;padding:9px;border:none;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab-btn{flex:1;min-width:80px;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;text-align:center}
 .tab-btn.active{background:#1a6cb0;color:#fff}
 .tab-btn:not(.active){background:#f0f2f5;color:#555}
-
+.code-item{background:#f8f9fb;border-radius:10px;padding:12px 14px;border:1px solid #eee;margin-bottom:8px}
+.code-badge{font-size:24px;font-weight:700;letter-spacing:4px;color:#1a4f8a;background:#EBF4FF;padding:6px 12px;border-radius:8px;display:inline-block;margin-bottom:8px}
 .reminder-section{background:#f8f8f8;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #eee}
-.reminder-section-title{font-size:12px;font-weight:600;color:#1a6cb0;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em}
-.study-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
-.study-check{display:flex;align-items:center;gap:6px;font-size:12px;color:#444;cursor:pointer;padding:4px}
-.study-check input{width:16px;height:16px;cursor:pointer;flex-shrink:0}
-.timing-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
-.timing-btn{padding:6px 12px;border-radius:20px;border:1px solid #ddd;font-size:12px;cursor:pointer;font-family:inherit;background:#fff;color:#555}
+.reminder-section-title{font-size:11px;font-weight:600;color:#1a6cb0;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em}
+.study-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.study-check{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#444;cursor:pointer;padding:4px;line-height:1.4}
+.study-check input{width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:1px}
+.timing-btns{display:flex;gap:6px;flex-wrap:wrap}
+.timing-btn{padding:7px 14px;border-radius:20px;border:1px solid #ddd;font-size:12px;cursor:pointer;font-family:inherit;background:#fff;color:#555}
 .timing-btn.active{background:#1a6cb0;color:#fff;border-color:#1a6cb0}
-.action-checks{display:flex;flex-direction:column;gap:6px}
-.action-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#444;cursor:pointer}
+.action-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#444;cursor:pointer;padding:4px 0}
 .action-check input{width:16px;height:16px;cursor:pointer}
-.reminder-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
-.reminder-item{background:#EBF4FF;border-radius:8px;padding:10px 12px;border:1px solid #b3d4f5;display:flex;align-items:center;justify-content:space-between}
-.reminder-item-info{font-size:12px;color:#1a4f8a;line-height:1.5}
-.reminder-del{background:none;border:none;color:#bbb;cursor:pointer;font-size:16px;padding:0 4px}
-.add-reminder-btn{width:100%;padding:10px;background:#1a6cb0;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
-.field-input{width:100%;font-size:14px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;color:#1a1a1a;font-family:inherit;outline:none}
+.preset-msg{width:100%;text-align:left;padding:8px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:12px;color:#444;cursor:pointer;font-family:inherit;margin-bottom:6px;line-height:1.4}
+.preset-msg:hover{background:#EBF4FF;border-color:#b3d4f5}
+.add-reminder-btn{width:100%;padding:12px;background:#1a6cb0;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
+.saved-msg{color:#1a7a3f;font-size:13px;text-align:center;margin-top:8px;display:none}
 </style>
 </head>
 <body>
 <div class="header">
-  <img class="logo" id="logoImg" src="/logo.png" alt="Dr. Moisés Aceves">
-  <div class="header-info">
-    <div class="header-name">Dr. Moisés Aceves</div>
-    <div class="header-sub">Panel médico</div>
+  <img class="logo" src="/logo.png" alt="Dr. Moises Aceves">
+  <div>
+    <div class="header-name">Dr. Moises Aceves</div>
+    <div class="header-sub">Panel medico</div>
   </div>
 </div>
 
 <div class="container">
   <div class="tabs">
-    <button class="tab-btn active" onclick="showTab('nuevo')">+ Nuevo paciente</button>
-    <button class="tab-btn" onclick="showTab('lista')">Mis pacientes</button>
-    <button class="tab-btn" onclick="showTab('codigos')">🔑 Códigos</button>
-    <button class="tab-btn" onclick="showTab('recordatorios')">🔔 Seguimiento</button>
+    <button class="tab-btn active" data-tab="nuevo">+ Nuevo</button>
+    <button class="tab-btn" data-tab="lista">Pacientes</button>
+    <button class="tab-btn" data-tab="codigos">Codigos</button>
+    <button class="tab-btn" data-tab="recordatorios">Seguimiento</button>
   </div>
 
   <div id="tab-nuevo">
@@ -104,16 +102,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="tab-lista" style="display:none">
     <div class="card">
       <div class="card-title">Pacientes guardados</div>
-      <div class="patient-list" id="patientList">
-        <div class="empty">Cargando...</div>
-      </div>
+      <div id="patientList"><div class="empty">Cargando...</div></div>
     </div>
   </div>
 
   <div id="tab-codigos" style="display:none">
     <div class="card">
-      <div class="card-title">Códigos pendientes de enviar</div>
-      <div style="font-size:12px;color:#888;margin-bottom:12px">Estos pacientes pagaron y esperan su código por WhatsApp</div>
+      <div class="card-title">Codigos pendientes</div>
+      <div style="font-size:12px;color:#888;margin-bottom:12px">Pacientes que esperan su codigo por WhatsApp</div>
       <div id="codesList"><div class="empty">Cargando...</div></div>
     </div>
   </div>
@@ -121,7 +117,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="tab-recordatorios" style="display:none">
     <div class="card">
       <div class="card-title">Configurar recordatorio de seguimiento</div>
-      <div style="font-size:12px;color:#888;margin-bottom:14px">Selecciona el paciente, los estudios y cuándo mostrar el recordatorio en su app</div>
 
       <div class="reminder-section">
         <div class="reminder-section-title">Paciente</div>
@@ -133,34 +128,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="reminder-section">
         <div class="reminder-section-title">Temporalidad</div>
         <div class="timing-btns" id="timingBtns">
-          <button class="timing-btn" data-days="14" onclick="selectTiming(this,'14')">2 semanas</button>
-          <button class="timing-btn" data-days="30" onclick="selectTiming(this,'30')">1 mes</button>
-          <button class="timing-btn" data-days="60" onclick="selectTiming(this,'60')">2 meses</button>
-          <button class="timing-btn" data-days="90" onclick="selectTiming(this,'90')">3 meses</button>
-          <button class="timing-btn" data-date onclick="selectTiming(this,'date')">Fecha específica</button>
+          <button class="timing-btn" data-days="14">2 semanas</button>
+          <button class="timing-btn" data-days="30">1 mes</button>
+          <button class="timing-btn" data-days="60">2 meses</button>
+          <button class="timing-btn" data-days="90">3 meses</button>
+          <button class="timing-btn" data-date="true">Fecha especifica</button>
         </div>
-        <input class="field-input" type="date" id="reminderDate" style="display:none;font-size:13px;margin-top:6px">
+        <div id="dateTimeInputs" style="display:none;margin-top:10px;display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div>
+              <div style="font-size:11px;color:#888;margin-bottom:4px">Fecha</div>
+              <input class="field-input" type="date" id="reminderDate" style="font-size:13px">
+            </div>
+            <div>
+              <div style="font-size:11px;color:#888;margin-bottom:4px">Hora (opcional)</div>
+              <input class="field-input" type="time" id="reminderTime" style="font-size:13px">
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="reminder-section">
         <div class="reminder-section-title">Estudios solicitados</div>
         <div class="study-grid">
           <label class="study-check"><input type="checkbox" value="Inbody"> Inbody</label>
-          <label class="study-check"><input type="checkbox" value="Rx de tórax"> Rx de tórax</label>
-          <label class="study-check"><input type="checkbox" value="Biometría hemática completa"> Biometría hemática</label>
-          <label class="study-check"><input type="checkbox" value="Química sanguínea (glucosa, urea, BUN, creatinina, ácido úrico)"> Química sanguínea</label>
+          <label class="study-check"><input type="checkbox" value="Rx de torax"> Rx de torax</label>
+          <label class="study-check"><input type="checkbox" value="Biometria hematica completa"> Biometria hematica</label>
+          <label class="study-check"><input type="checkbox" value="Quimica sanguinea (glucosa, urea, BUN, creatinina, acido urico)"> Quimica sanguinea</label>
           <label class="study-check"><input type="checkbox" value="Electrolitos (sodio, potasio, cloro)"> Electrolitos</label>
-          <label class="study-check"><input type="checkbox" value="Perfil de lípidos (colesterol total, triglicéridos, HDL, LDL)"> Perfil de lípidos</label>
+          <label class="study-check"><input type="checkbox" value="Perfil de lipidos (colesterol total, trigliceridos, HDL, LDL)"> Perfil de lipidos</label>
           <label class="study-check"><input type="checkbox" value="Hemoglobina glucosilada (HbA1c)"> HbA1c</label>
           <label class="study-check"><input type="checkbox" value="Perfil tiroideo (TSH y T4 libre)"> Perfil tiroideo</label>
           <label class="study-check"><input type="checkbox" value="Examen general de orina"> EGO</label>
-          <label class="study-check"><input type="checkbox" value="Cinética de hierro"> Cinética de hierro</label>
-          <label class="study-check"><input type="checkbox" value="Pruebas de función hepática"> Función hepática</label>
-          <label class="study-check"><input type="checkbox" value="Tiempos de coagulación"> Tiempos de coagulación</label>
-          <label class="study-check"><input type="checkbox" value="Albúmina/creatinina urinaria"> Albúmina/creatinina</label>
+          <label class="study-check"><input type="checkbox" value="Cinetica de hierro"> Cinetica de hierro</label>
+          <label class="study-check"><input type="checkbox" value="Pruebas de funcion hepatica"> Funcion hepatica</label>
+          <label class="study-check"><input type="checkbox" value="Tiempos de coagulacion"> Tiempos de coagulacion</label>
+          <label class="study-check"><input type="checkbox" value="Albumina/creatinina urinaria"> Albumina/creatinina</label>
           <label class="study-check"><input type="checkbox" value="Vitamina B12 (HIDROXI)"> Vitamina B12</label>
         </div>
-        <div style="margin-top:8px">
+        <div style="margin-top:10px">
           <div style="font-size:11px;color:#888;margin-bottom:4px">Otros:</div>
           <input class="field-input" id="otrosEstudios" placeholder="Especifica otros estudios..." style="font-size:13px">
         </div>
@@ -168,25 +174,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
       <div class="reminder-section">
         <div class="reminder-section-title">Mensaje introductorio</div>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
-          <button class="timing-btn" style="text-align:left;padding:8px 10px;border-radius:8px;width:100%" onclick="setMsg('Han pasado 2 semanas desde que iniciaste tu Plan Cardioprotector. ¿Cómo te has sentido? Es momento de revisar tu evolución inicial y ajustar lo que sea necesario.')">2 semanas — ¿Cómo te has sentido?</button>
-          <button class="timing-btn" style="text-align:left;padding:8px 10px;border-radius:8px;width:100%" onclick="setMsg('Ya pasó un mes desde tu Plan Cardioprotector. Es tiempo de realizar tus estudios de seguimiento para evaluar tu respuesta al tratamiento y actualizar tu plan según tus resultados.')">1 mes — Estudios de seguimiento</button>
-          <button class="timing-btn" style="text-align:left;padding:8px 10px;border-radius:8px;width:100%" onclick="setMsg('Han pasado los primeros meses de tu Plan Cardioprotector. Tu constancia hace la diferencia. Realizaremos una valoración completa para documentar tus avances y optimizar tu tratamiento.')">2-3 meses — Valoración completa</button>
-        </div>
-        <textarea class="field-input" id="reminderMessage" placeholder="O escribe un mensaje personalizado..." style="font-size:13px;min-height:60px"></textarea>
+        <button class="preset-msg" data-msg="Han pasado 2 semanas desde que iniciaste tu Plan Cardioprotector. Como te has sentido? Es momento de revisar tu evolucion inicial y ajustar lo que sea necesario.">2 semanas — Como te has sentido con tu plan?</button>
+        <button class="preset-msg" data-msg="Ya paso un mes desde tu Plan Cardioprotector. Es tiempo de realizar tus estudios de seguimiento para evaluar tu respuesta al tratamiento y actualizar tu plan segun tus resultados.">1 mes — Estudios de seguimiento</button>
+        <button class="preset-msg" data-msg="Han pasado los primeros meses de tu Plan Cardioprotector. Tu constancia hace la diferencia. Realizaremos una valoracion completa para documentar tus avances y optimizar tu tratamiento.">2-3 meses — Valoracion completa</button>
+        <textarea class="field-input" id="reminderMessage" placeholder="O escribe un mensaje personalizado..." style="font-size:13px;min-height:60px;margin-top:6px"></textarea>
       </div>
 
       <div class="reminder-section">
-        <div class="reminder-section-title">Acciones disponibles para el paciente</div>
-        <div class="action-checks">
-          <label class="action-check"><input type="checkbox" id="actionValoracion"> 📋 Enviar resultados para completar mi valoración</label>
-          <label class="action-check"><input type="checkbox" id="actionActualizar"> 🔄 Enviar resultados para actualizar mi plan</label>
-          <label class="action-check"><input type="checkbox" id="actionCita"> 📅 Agendar cita de seguimiento</label>
-        </div>
+        <div class="reminder-section-title">Acciones para el paciente</div>
+        <label class="action-check"><input type="checkbox" id="actionValoracion"> Envia tus resultados para completar tu valoracion</label>
+        <label class="action-check"><input type="checkbox" id="actionActualizar"> Envia tus resultados para actualizar tu plan</label>
+        <label class="action-check"><input type="checkbox" id="actionCita"> Envia mensaje para agendar tu cita de seguimiento</label>
       </div>
 
-      <button class="add-reminder-btn" onclick="saveReminder()">+ Guardar recordatorio</button>
-      <div id="reminderSaved" style="color:#1a7a3f;font-size:13px;text-align:center;margin-top:8px;display:none">✓ Recordatorio guardado</div>
+      <button class="add-reminder-btn" id="saveReminderBtn">+ Guardar recordatorio</button>
+      <div class="saved-msg" id="savedMsg">Recordatorio guardado correctamente</div>
     </div>
   </div>
 </div>
@@ -195,149 +197,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <script>
 var currentLink = '';
-
-document.getElementById('saveBtn').addEventListener('click', savePatient);
-document.getElementById('copyBtn').addEventListener('click', copyLink);
-document.getElementById('whatsappBtn').addEventListener('click', shareWhatsApp);
-
-function showTab(tab) {
-  document.getElementById('tab-nuevo').style.display = tab === 'nuevo' ? 'block' : 'none';
-  document.getElementById('tab-lista').style.display = tab === 'lista' ? 'block' : 'none';
-  document.getElementById('tab-codigos').style.display = tab === 'codigos' ? 'block' : 'none';
-  document.getElementById('tab-recordatorios').style.display = tab === 'recordatorios' ? 'block' : 'none';
-  var btns = document.querySelectorAll('.tab-btn');
-  btns[0].classList.toggle('active', tab === 'nuevo');
-  btns[1].classList.toggle('active', tab === 'lista');
-  btns[2].classList.toggle('active', tab === 'codigos');
-  btns[3].classList.toggle('active', tab === 'recordatorios');
-  if (tab === 'lista') loadPatients();
-  if (tab === 'codigos') loadCodes();
-  if (tab === 'recordatorios') loadPatientsForReminder();
-}
-
 var selectedDays = null;
 var selectedDateType = null;
 
-function selectTiming(btn, val) {
-  document.querySelectorAll('.timing-btn').forEach(function(b){ b.classList.remove('active'); });
-  btn.classList.add('active');
-  if (val === 'date') {
-    selectedDays = null;
-    selectedDateType = 'date';
-    document.getElementById('reminderDate').style.display = 'block';
-  } else {
-    selectedDays = parseInt(val);
-    selectedDateType = 'days';
-    document.getElementById('reminderDate').style.display = 'none';
-  }
-}
-
-function loadPatientsForReminder() {
-  fetch('/api/patients')
-  .then(function(r){ return r.json(); })
-  .then(function(patients) {
-    var sel = document.getElementById('reminderPatient');
-    sel.innerHTML = '<option value="">Selecciona un paciente...</option>';
-    patients.forEach(function(p) {
-      var opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.name;
-      sel.appendChild(opt);
-    });
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var tab = this.getAttribute('data-tab');
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    this.classList.add('active');
+    document.querySelectorAll('[id^="tab-"]').forEach(function(el) { el.style.display = 'none'; });
+    document.getElementById('tab-' + tab).style.display = 'block';
+    if (tab === 'lista') loadPatients();
+    if (tab === 'codigos') loadCodes();
+    if (tab === 'recordatorios') loadPatientsForReminder();
   });
-}
+});
 
-function setMsg(text) {
-  document.getElementById('reminderMessage').value = text;
-}
-
-function saveReminder() {
-  var patientId = document.getElementById('reminderPatient').value;
-  if (!patientId) { alert('Selecciona un paciente'); return; }
-  if (!selectedDays && selectedDateType !== 'date') { alert('Selecciona la temporalidad'); return; }
-
-  var studies = [];
-  document.querySelectorAll('.study-check input:checked').forEach(function(cb){ studies.push(cb.value); });
-  var otros = document.getElementById('otrosEstudios').value.trim();
-  if (otros) studies.push(otros);
-
-  var reminder = {
-    id: Date.now(),
-    active: true,
-    type: selectedDateType,
-    days: selectedDays,
-    date: selectedDateType === 'date' ? document.getElementById('reminderDate').value : null,
-    studies: studies,
-    message: document.getElementById('reminderMessage').value.trim(),
-    actions: {
-      valoracion: document.getElementById('actionValoracion').checked,
-      actualizar: document.getElementById('actionActualizar').checked,
-      cita: document.getElementById('actionCita').checked
-    }
-  };
-
-  // Save reminder via API
-  fetch('/api/reminders/' + patientId, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(reminder)
-  })
-  .then(function(r){ return r.json(); })
-  .then(function() {
-    document.getElementById('reminderSaved').style.display = 'block';
-    setTimeout(function(){ document.getElementById('reminderSaved').style.display = 'none'; }, 3000);
-    // Reset form
-    document.querySelectorAll('.study-check input').forEach(function(cb){ cb.checked = false; });
-    document.getElementById('otrosEstudios').value = '';
-    document.getElementById('reminderMessage').value = '';
-    document.getElementById('actionValoracion').checked = false;
-    document.getElementById('actionActualizar').checked = false;
-    document.getElementById('actionCita').checked = false;
-    document.querySelectorAll('.timing-btn').forEach(function(b){ b.classList.remove('active'); });
-    selectedDays = null; selectedDateType = null;
-  })
-  .catch(function(e){ alert('Error: ' + e.message); });
-}
-
-function loadCodes() {
-  var list = document.getElementById('codesList');
-  fetch('/api/codes')
-  .then(function(r) { return r.json(); })
-  .then(function(codes) {
-    if (!codes.length) { list.innerHTML = '<div class="empty">Sin códigos pendientes</div>'; return; }
-    var html = '';
-    codes.forEach(function(c) {
-      var date = new Date(c.createdAt).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
-      var waMsg = encodeURIComponent('Hola, tu código de acceso al Plan Cardioprotector es: ' + c.code + '. Ingrésalo en la app para ver tu plan.');
-      html += '<div class="patient-item" style="flex-direction:column;align-items:flex-start;gap:8px">';
-      html += '<div style="display:flex;align-items:center;gap:12px;width:100%">';
-      html += '<div class="patient-avatar">' + (c.name||'?').split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase() + '</div>';
-      html += '<div class="patient-info"><div class="patient-name">' + c.name + '</div>';
-      html += '<div class="patient-dx">' + c.email + '</div>';
-      html += '<div class="patient-date">' + date + '</div></div>';
-      html += '<div style="font-size:24px;font-weight:700;letter-spacing:4px;color:#1a4f8a;background:#EBF4FF;padding:6px 12px;border-radius:8px">' + c.code + '</div>';
-      html += '</div>';
-      html += '<a href="https://wa.me/?text=' + waMsg + '" style="width:100%;padding:8px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;text-align:center;text-decoration:none;display:block">📱 Enviar por WhatsApp</a>';
-      html += '</div>';
-    });
-    list.innerHTML = html;
-  })
-  .catch(function() { list.innerHTML = '<div class="empty">Error al cargar</div>'; });
-}
-
-function savePatient() {
+// Save patient
+document.getElementById('saveBtn').addEventListener('click', function() {
   var raw = document.getElementById('jsonArea').value.trim();
   var err = document.getElementById('jsonError');
   var box = document.getElementById('successBox');
   err.textContent = '';
   box.classList.remove('show');
   var parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch(e) {
-    err.textContent = 'JSON invalido. Copia el codigo completo que te dio Claude.';
-    return;
-  }
+  try { parsed = JSON.parse(raw); } catch(e) { err.textContent = 'JSON invalido. Copia el codigo completo que te dio Claude.'; return; }
   fetch('/api/patients', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -352,80 +237,173 @@ function savePatient() {
     document.getElementById('jsonArea').value = '';
     showToast('Paciente guardado');
   })
-  .catch(function(e) {
-    err.textContent = 'Error al guardar: ' + e.message;
-  });
-}
+  .catch(function(e) { err.textContent = 'Error al guardar.'; });
+});
 
-function copyLink() {
-  navigator.clipboard.writeText(currentLink).then(function() {
-    showToast('Link copiado');
-  });
-}
+document.getElementById('copyBtn').addEventListener('click', function() {
+  navigator.clipboard.writeText(currentLink).then(function() { showToast('Link copiado'); });
+});
 
-function shareWhatsApp() {
+document.getElementById('whatsappBtn').addEventListener('click', function() {
   var msg = 'Aqui esta tu plan medico personalizado\n' + currentLink + '\n\nAbrelo en Safari para verlo completo.';
   window.open('https://wa.me/?text=' + encodeURIComponent(msg));
-}
+});
 
+// Patients list
 function loadPatients() {
   var list = document.getElementById('patientList');
   fetch('/api/patients')
   .then(function(r) { return r.json(); })
   .then(function(patients) {
-    if (!patients.length) {
-      list.innerHTML = '<div class="empty">Sin pacientes guardados aun</div>';
-      return;
-    }
+    if (!patients.length) { list.innerHTML = '<div class="empty">Sin pacientes guardados</div>'; return; }
     var html = '';
-    for (var i = 0; i < patients.length; i++) {
-      var p = patients[i];
+    patients.forEach(function(p) {
       var name = p.name || '?';
-      var parts = name.split(' ');
-      var initials = '';
-      for (var j = 0; j < Math.min(parts.length, 2); j++) {
-        if (parts[j][0]) initials += parts[j][0].toUpperCase();
-      }
-      var date = new Date(p.createdAt).toLocaleDateString('es-MX', {day:'2-digit', month:'short', year:'numeric'});
+      var initials = name.split(' ').slice(0, 2).map(function(w) { return w[0] || ''; }).join('').toUpperCase();
+      var date = new Date(p.createdAt).toLocaleDateString('es-MX', {day: '2-digit', month: 'short', year: 'numeric'});
       html += '<div class="patient-item">';
       html += '<div class="patient-avatar">' + initials + '</div>';
-      html += '<div class="patient-info">';
-      html += '<div class="patient-name">' + name + '</div>';
+      html += '<div class="patient-info"><div class="patient-name">' + name + '</div>';
       html += '<div class="patient-dx">' + (p.dx || '') + '</div>';
-      html += '<div class="patient-date">' + date + '</div>';
-      html += '</div>';
+      html += '<div class="patient-date">' + date + '</div></div>';
       html += '<div class="patient-actions">';
       html += '<button class="btn-icon btn-share" data-id="' + p.id + '">Link</button>';
       html += '<button class="btn-icon btn-del" data-id="' + p.id + '">Borrar</button>';
-      html += '</div>';
-      html += '</div>';
-    }
+      html += '</div></div>';
+    });
     list.innerHTML = html;
-    var shareBtns = list.querySelectorAll('.btn-share');
-    var delBtns = list.querySelectorAll('.btn-del');
-    for (var k = 0; k < shareBtns.length; k++) {
-      shareBtns[k].addEventListener('click', function() { sharePatient(this.getAttribute('data-id')); });
-      delBtns[k].addEventListener('click', function() { deletePatient(this.getAttribute('data-id')); });
-    }
+    list.querySelectorAll('.btn-share').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var url = window.location.origin + '/p/' + this.getAttribute('data-id');
+        navigator.clipboard.writeText(url).then(function() { showToast('Link copiado'); });
+      });
+    });
+    list.querySelectorAll('.btn-del').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = this.getAttribute('data-id');
+        if (!confirm('Eliminar este paciente?')) return;
+        fetch('/api/patients/' + id, {method: 'DELETE'}).then(function() { showToast('Eliminado'); loadPatients(); });
+      });
+    });
   })
-  .catch(function() {
-    list.innerHTML = '<div class="empty">Error al cargar</div>';
+  .catch(function() { list.innerHTML = '<div class="empty">Error al cargar</div>'; });
+}
+
+// Codes list
+function loadCodes() {
+  var list = document.getElementById('codesList');
+  fetch('/api/codes')
+  .then(function(r) { return r.json(); })
+  .then(function(codes) {
+    if (!codes.length) { list.innerHTML = '<div class="empty">Sin codigos pendientes</div>'; return; }
+    var html = '';
+    codes.forEach(function(c) {
+      var name = c.name || '?';
+      var time = new Date(c.createdAt).toLocaleTimeString('es-MX', {hour: '2-digit', minute: '2-digit'});
+      var waMsg = encodeURIComponent('Hola ' + name.split(' ')[0] + ', tu codigo de acceso al Plan Cardioprotector es: ' + c.code + '. Ingresalo en la app para ver tu plan.');
+      html += '<div class="code-item">';
+      html += '<div style="font-size:14px;font-weight:600;margin-bottom:4px">' + name + '</div>';
+      html += '<div class="code-badge">' + c.code + '</div>';
+      html += '<div style="font-size:11px;color:#888;margin-bottom:8px">' + time + '</div>';
+      html += '<a href="https://wa.me/?text=' + waMsg + '" style="display:block;padding:10px;background:#25D366;color:#fff;border-radius:8px;text-align:center;text-decoration:none;font-size:13px;font-weight:600">Enviar por WhatsApp</a>';
+      html += '</div>';
+    });
+    list.innerHTML = html;
+  })
+  .catch(function() { list.innerHTML = '<div class="empty">Error al cargar</div>'; });
+}
+
+// Reminders
+function loadPatientsForReminder() {
+  fetch('/api/patients')
+  .then(function(r) { return r.json(); })
+  .then(function(patients) {
+    var sel = document.getElementById('reminderPatient');
+    sel.innerHTML = '<option value="">Selecciona un paciente...</option>';
+    patients.forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      sel.appendChild(opt);
+    });
   });
 }
 
-function sharePatient(id) {
-  var url = window.location.origin + '/p/' + id;
-  navigator.clipboard.writeText(url).then(function() { showToast('Link copiado'); });
-}
+// Timing buttons
+document.querySelectorAll('.timing-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.timing-btn').forEach(function(b) { b.classList.remove('active'); });
+    this.classList.add('active');
+    var dateInputs = document.getElementById('dateTimeInputs');
+    if (this.getAttribute('data-date')) {
+      selectedDays = null;
+      selectedDateType = 'date';
+      dateInputs.style.display = 'block';
+    } else {
+      selectedDays = parseInt(this.getAttribute('data-days'));
+      selectedDateType = 'days';
+      dateInputs.style.display = 'none';
+    }
+  });
+});
 
-function deletePatient(id) {
-  if (!confirm('Eliminar este paciente?')) return;
-  fetch('/api/patients/' + id, {method: 'DELETE'})
+// Preset messages
+document.querySelectorAll('.preset-msg').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.getElementById('reminderMessage').value = this.getAttribute('data-msg');
+  });
+});
+
+// Save reminder
+document.getElementById('saveReminderBtn').addEventListener('click', function() {
+  var patientId = document.getElementById('reminderPatient').value;
+  if (!patientId) { alert('Selecciona un paciente'); return; }
+  if (!selectedDays && selectedDateType !== 'date') { alert('Selecciona la temporalidad'); return; }
+
+  var studies = [];
+  document.querySelectorAll('.study-check input:checked').forEach(function(cb) { studies.push(cb.value); });
+  var otros = document.getElementById('otrosEstudios').value.trim();
+  if (otros) studies.push(otros);
+
+  var reminder = {
+    id: Date.now(),
+    active: true,
+    type: selectedDateType,
+    days: selectedDays,
+    date: selectedDateType === 'date' ? document.getElementById('reminderDate').value : null,
+    time: selectedDateType === 'date' ? document.getElementById('reminderTime').value : null,
+    studies: studies,
+    message: document.getElementById('reminderMessage').value.trim(),
+    actions: {
+      valoracion: document.getElementById('actionValoracion').checked,
+      actualizar: document.getElementById('actionActualizar').checked,
+      cita: document.getElementById('actionCita').checked
+    }
+  };
+
+  fetch('/api/reminders/' + patientId, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(reminder)
+  })
+  .then(function(r) { return r.json(); })
   .then(function() {
-    showToast('Paciente eliminado');
-    loadPatients();
-  });
-}
+    var msg = document.getElementById('savedMsg');
+    msg.style.display = 'block';
+    setTimeout(function() { msg.style.display = 'none'; }, 3000);
+    // Reset
+    document.querySelectorAll('.study-check input').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('otrosEstudios').value = '';
+    document.getElementById('reminderMessage').value = '';
+    document.getElementById('actionValoracion').checked = false;
+    document.getElementById('actionActualizar').checked = false;
+    document.getElementById('actionCita').checked = false;
+    document.querySelectorAll('.timing-btn').forEach(function(b) { b.classList.remove('active'); });
+    selectedDays = null; selectedDateType = null;
+    document.getElementById('dateTimeInputs').style.display = 'none';
+  })
+  .catch(function() { alert('Error al guardar recordatorio'); });
+});
 
 function showToast(msg) {
   var t = document.getElementById('toast');
