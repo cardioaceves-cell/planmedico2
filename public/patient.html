@@ -134,8 +134,6 @@ function showPaymentScreen() {
     <div class="payment-title">Plan Cardioprotector</div>
     <div class="payment-sub">Dr. Moisés Aceves<br>Cardiología clínica y rehabilitación cardiaca</div>
     <div class="payment-card">
-      <div class="payment-step">Paso 1 — Ingresa tu correo electrónico</div>
-      <input class="payment-input" id="emailInput" type="email" placeholder="tucorreo@email.com">
       <button class="payment-btn btn-paypal" id="payBtn">💳 Pagar plan cardioprotector</button>
       <div class="payment-error" id="payError"></div>
     </div>
@@ -146,27 +144,17 @@ function showPaymentScreen() {
 }
 
 async function handlePay() {
-  var email = document.getElementById('emailInput').value.trim();
-  var err = document.getElementById('payError');
-  if (!email || !email.includes('@')) { err.textContent = 'Ingresa un correo válido'; return; }
-  userEmail = email;
-  err.textContent = '';
-  document.getElementById('payBtn').textContent = 'Enviando código...';
+  document.getElementById('payBtn').textContent = 'Procesando...';
   document.getElementById('payBtn').disabled = true;
-
   try {
     var resp = await fetch('/api/send-code', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({patientId: PATIENT_ID, email: email})
+      body: JSON.stringify({patientId: PATIENT_ID, email: 'paciente@app.com'})
     });
     var result = await resp.json();
     if (!resp.ok) throw new Error(result.error);
-
-    // Open PayPal
     window.open('https://paypal.me/MOISESACEVES80?locale.x=es_XC&country.x=MX', '_blank');
-
-    // Show code screen
     showCodeScreen();
   } catch(e) {
     document.getElementById('payBtn').textContent = 'Pagar plan cardioprotector';
@@ -175,37 +163,47 @@ async function handlePay() {
   }
 }
 
+function showCodeGenerated(code) {
+  document.getElementById('mainContent').innerHTML = `<div class="payment-screen">
+    <img class="payment-logo" src="/logo.png" alt="Dr. Moises Aceves">
+    <div class="payment-title">¡Pago iniciado!</div>
+    <div class="payment-sub">Completa el pago en PayPal.<br>Tu médico te enviará el código por WhatsApp.</div>
+    <div class="payment-card" style="text-align:center">
+      <div style="font-size:13px;color:#888;margin-bottom:12px">Código generado para tu médico:</div>
+      <div style="font-size:36px;font-weight:700;letter-spacing:8px;color:#1a4f8a;background:#EBF4FF;border-radius:10px;padding:16px">${code}</div>
+      <div style="font-size:12px;color:#aaa;margin-top:10px">Tu médico lo verá y te lo confirmará por WhatsApp</div>
+    </div>
+    <button class="payment-btn btn-already" onclick="showCodeScreen()" style="margin-top:8px">Ya tengo mi código — acceder</button>
+  </div>`;
+}
+
 function showCodeScreen() {
   document.getElementById('mainContent').innerHTML = `<div class="payment-screen">
     <img class="payment-logo" src="/logo.png" alt="Dr. Moises Aceves">
     <div class="payment-title">Ingresa tu código</div>
-    <div class="payment-sub">Te enviamos un código de 6 dígitos<br>a tu correo electrónico</div>
+    <div class="payment-sub">Tu médico te enviará el código<br>por WhatsApp al confirmar tu pago</div>
     <div class="payment-card">
-      <input class="payment-input" id="emailInput2" type="email" placeholder="tucorreo@email.com" value="">
       <input class="code-input" id="codeInput" type="tel" maxlength="6" placeholder="000000">
       <button class="payment-btn btn-code" id="verifyBtn">Acceder al plan</button>
       <div class="payment-error" id="codeError"></div>
     </div>
     <div class="back-link" id="backLink">Volver</div>
   </div>`;
-  if (userEmail) document.getElementById('emailInput2').value = userEmail;
   document.getElementById('verifyBtn').addEventListener('click', verifyCode);
   document.getElementById('backLink').addEventListener('click', showPaymentScreen);
 }
 
 async function verifyCode() {
-  var email = document.getElementById('emailInput2').value.trim();
   var code = document.getElementById('codeInput').value.trim();
   var err = document.getElementById('codeError');
-  if (!email || !code || code.length < 6) { err.textContent = 'Ingresa tu correo y el código de 6 dígitos'; return; }
+  if (!code || code.length < 6) { err.textContent = 'Ingresa el código de 6 dígitos'; return; }
   document.getElementById('verifyBtn').textContent = 'Verificando...';
   document.getElementById('verifyBtn').disabled = true;
-
   try {
     var resp = await fetch('/api/verify-code', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({patientId: PATIENT_ID, email: email, code: code})
+      body: JSON.stringify({patientId: PATIENT_ID, email: 'paciente@app.com', code: code})
     });
     var result = await resp.json();
     if (!resp.ok) throw new Error(result.error);
@@ -214,7 +212,7 @@ async function verifyCode() {
   } catch(e) {
     document.getElementById('verifyBtn').textContent = 'Acceder al plan';
     document.getElementById('verifyBtn').disabled = false;
-    err.textContent = result ? result.error : 'Código incorrecto';
+    err.textContent = 'Código incorrecto';
   }
 }
 
