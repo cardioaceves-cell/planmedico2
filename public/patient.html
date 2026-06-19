@@ -115,7 +115,7 @@ document.getElementById('logoImg').src = '/logo.png';
 
 // Check if already has access in session
 var sessionKey = 'access_' + PATIENT_ID;
-var hasAccess = sessionStorage.getItem(sessionKey) === 'true';
+var hasAccess = localStorage.getItem(sessionKey) === 'true';
 
 async function init() {
   if (hasAccess) {
@@ -207,7 +207,7 @@ async function verifyCode() {
     });
     var result = await resp.json();
     if (!resp.ok) throw new Error(result.error);
-    sessionStorage.setItem(sessionKey, 'true');
+    localStorage.setItem(sessionKey, 'true');
     loadPlan();
   } catch(e) {
     document.getElementById('verifyBtn').textContent = 'Acceder al plan';
