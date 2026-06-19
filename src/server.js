@@ -17,6 +17,10 @@ async function initDB() {
     email VARCHAR(255) NOT NULL, code VARCHAR(6) NOT NULL,
     used BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW()
   )`);
+  await db.query(`CREATE TABLE IF NOT EXISTS reminders (
+    id SERIAL PRIMARY KEY, patient_id VARCHAR(20) NOT NULL,
+    reminder JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW()
+  )`);
   console.log('DB ready');
 }
 
@@ -37,7 +41,15 @@ app.get('/api/patients/:id', async (req, res) => {
   try {
     const r = await db.query('SELECT * FROM patients WHERE id = $1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({error: 'No encontrado'});
-    res.json({id: r.rows[0].id, data: r.rows[0].data});
+    // Include reminders
+    const rem = await db.query('SELECT reminder FROM reminders WHERE patient_id = $1 ORDER BY created_at DESC', [req.params.id]);
+    const patient = r.rows[0];
+    res.json({
+      id: patient.id,
+      data: patient.data,
+      reminders: rem.rows.map(r => r.reminder),
+      planStart: patient.created_at
+    });
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
@@ -60,7 +72,21 @@ app.delete('/api/patients/:id', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-// Generate code — returns it to the patient screen
+app.post('/api/reminders/:id', async (req, res) => {
+  try {
+    const reminder = req.body;
+    await db.query('INSERT INTO reminders (patient_id, reminder) VALUES ($1, $2)', [req.params.id, reminder]);
+    res.json({ok: true});
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.get('/api/reminders/:id', async (req, res) => {
+  try {
+    const r = await db.query('SELECT * FROM reminders WHERE patient_id = $1 ORDER BY created_at DESC', [req.params.id]);
+    res.json(r.rows.map(row => row.reminder));
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
 app.post('/api/send-code', async (req, res) => {
   try {
     const {patientId, email} = req.body;
@@ -70,25 +96,19 @@ app.post('/api/send-code', async (req, res) => {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     await db.query('INSERT INTO access_codes (patient_id, email, code) VALUES ($1, $2, $3)',
       [patientId, email.toLowerCase(), code]);
-    // Return code directly — doctor sends via WhatsApp
     res.json({ok: true, code});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-// Get pending codes for editor (doctor view)
 app.get('/api/codes', async (req, res) => {
   try {
     const r = await db.query(`
       SELECT ac.code, ac.email, ac.patient_id, ac.created_at, p.data
-      FROM access_codes ac
-      JOIN patients p ON p.id = ac.patient_id
-      WHERE ac.used = FALSE
-      ORDER BY ac.created_at DESC LIMIT 20
+      FROM access_codes ac JOIN patients p ON p.id = ac.patient_id
+      WHERE ac.used = FALSE ORDER BY ac.created_at DESC LIMIT 20
     `);
     res.json(r.rows.map(row => ({
-      code: row.code,
-      email: row.email,
-      patientId: row.patient_id,
+      code: row.code, email: row.email, patientId: row.patient_id,
       name: row.data && row.data.patient ? row.data.patient.name : 'Sin nombre',
       createdAt: row.created_at
     })));
