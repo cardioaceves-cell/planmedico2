@@ -2,28 +2,20 @@ const express = require('express');
 const path = require('path');
 const {Client} = require('pg');
 const {nanoid} = require('nanoid');
-const {Resend} = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-
 const db = new Client({connectionString: process.env.DATABASE_URL, ssl: {rejectUnauthorized: false}});
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function initDB() {
   await db.connect();
   await db.query(`CREATE TABLE IF NOT EXISTS patients (
-    id VARCHAR(20) PRIMARY KEY,
-    data JSONB NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    id VARCHAR(20) PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW()
   )`);
   await db.query(`CREATE TABLE IF NOT EXISTS access_codes (
-    id SERIAL PRIMARY KEY,
-    patient_id VARCHAR(20) NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    code VARCHAR(6) NOT NULL,
-    used BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
+    id SERIAL PRIMARY KEY, patient_id VARCHAR(20) NOT NULL,
+    email VARCHAR(255) NOT NULL, code VARCHAR(6) NOT NULL,
+    used BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW()
   )`);
   console.log('DB ready');
 }
@@ -68,45 +60,39 @@ app.delete('/api/patients/:id', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
+// Generate code — returns it to the patient screen
 app.post('/api/send-code', async (req, res) => {
   try {
     const {patientId, email} = req.body;
     if (!patientId || !email) return res.status(400).json({error: 'Faltan datos'});
-
     const p = await db.query('SELECT id FROM patients WHERE id = $1', [patientId]);
     if (!p.rows.length) return res.status(404).json({error: 'Plan no encontrado'});
-
     const code = String(Math.floor(100000 + Math.random() * 900000));
+    await db.query('INSERT INTO access_codes (patient_id, email, code) VALUES ($1, $2, $3)',
+      [patientId, email.toLowerCase(), code]);
+    // Return code directly — doctor sends via WhatsApp
+    res.json({ok: true, code});
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
 
-    await db.query(
-      'INSERT INTO access_codes (patient_id, email, code) VALUES ($1, $2, $3)',
-      [patientId, email.toLowerCase(), code]
-    );
-
-    await resend.emails.send({
-      from: 'Dr. Moisés Aceves <onboarding@resend.dev>',
-      to: email,
-      subject: 'Tu código de acceso — Plan Cardioprotector',
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:32px">
-          <h2 style="color:#1a4f8a">Dr. Moisés Aceves</h2>
-          <p style="color:#555">Cardiología clínica y rehabilitación cardiaca</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <p style="font-size:15px;color:#333">Tu código de acceso al Plan Cardioprotector es:</p>
-          <div style="background:#EBF4FF;border-radius:12px;padding:24px;text-align:center;margin:20px 0">
-            <span style="font-size:40px;font-weight:700;letter-spacing:8px;color:#1a4f8a">${code}</span>
-          </div>
-          <p style="font-size:13px;color:#888">Ingresa este código en la app para acceder a tu plan médico personalizado.</p>
-          <p style="font-size:12px;color:#bbb;margin-top:32px">Dr. Moisés Aceves · cardioaceves@gmail.com · WhatsApp 55 6117 1631 7</p>
-        </div>
-      `
-    });
-
-    res.json({ok: true});
-  } catch(e) {
-    console.error('Email error:', e.message);
-    res.status(500).json({error: e.message});
-  }
+// Get pending codes for editor (doctor view)
+app.get('/api/codes', async (req, res) => {
+  try {
+    const r = await db.query(`
+      SELECT ac.code, ac.email, ac.patient_id, ac.created_at, p.data
+      FROM access_codes ac
+      JOIN patients p ON p.id = ac.patient_id
+      WHERE ac.used = FALSE
+      ORDER BY ac.created_at DESC LIMIT 20
+    `);
+    res.json(r.rows.map(row => ({
+      code: row.code,
+      email: row.email,
+      patientId: row.patient_id,
+      name: row.data && row.data.patient ? row.data.patient.name : 'Sin nombre',
+      createdAt: row.created_at
+    })));
+  } catch(e) { res.status(500).json({error: e.message}); }
 });
 
 app.post('/api/verify-code', async (req, res) => {
