@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Plan Médico</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a}
+.app{max-width:480px;margin:0 auto;min-height:100vh;background:#fff}
+.top-bar{padding:10px 16px;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;gap:12px;background:#fff;position:sticky;top:0;z-index:10}
+.logo-img{height:44px;width:auto;object-fit:contain;flex-shrink:0}
+.top-bar-info{flex:1;min-width:0}
+.top-bar-name{font-size:13px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-bar-sub{font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabs{display:flex;border-bottom:1px solid #e8e8e8;background:#fff;position:sticky;top:63px;z-index:9}
+.tab{flex:1;padding:10px 4px;font-size:13px;text-align:center;cursor:pointer;color:#888;border-bottom:2px solid transparent}
+.tab.active{color:#1a1a1a;border-bottom:2px solid #1a1a1a;font-weight:600}
+.content{padding:16px}
+.section{margin-bottom:20px}
+.section-title{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px}
+.field-label{font-size:11px;color:#888;margin-bottom:3px}
+.field-value{font-size:14px;color:#1a1a1a;line-height:1.5}
+.field-row{margin-bottom:12px}
+.med-card{background:#f8f8f8;border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid #eee}
+.med-name{font-size:14px;font-weight:600;margin-bottom:4px;color:#1a1a1a}
+.med-detail{font-size:13px;color:#555}
+.meal-block{margin-bottom:18px}
+.meal-title{font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.options-tabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.opt-tab{font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid #ddd;cursor:pointer;color:#888;background:transparent;font-family:inherit}
+.opt-tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.opt-content{font-size:13px;color:#444;line-height:1.6;background:#f8f8f8;border-radius:10px;padding:10px 12px;white-space:pre-wrap}
+.exercise-day{background:#f8f8f8;border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid #eee}
+.day-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.day-title{font-size:13px;font-weight:600;color:#1a1a1a}
+.day-type{font-size:11px;padding:3px 9px;border-radius:10px;font-weight:600}
+.day-type.fuerza{background:#EBF4FF;color:#1a6cb0}
+.day-type.cardio{background:#E6F7EE;color:#1a7a3f}
+.day-body{display:none;margin-top:10px}
+.day-body.open{display:block}
+.ex-table{width:100%;font-size:12px;border-collapse:collapse}
+.ex-table th{text-align:left;color:#888;font-weight:600;padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-transform:uppercase}
+.ex-table td{padding:7px 6px;border-bottom:1px solid #f0f0f0;color:#1a1a1a;vertical-align:top}
+.nota-toggle{font-size:11px;color:#1a6cb0;cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:3px;background:none;border:none;font-family:inherit;margin-top:2px}
+.nota-body{display:none;margin-top:6px;padding:8px 10px;background:#EBF4FF;border-radius:8px;font-size:12px;color:#1a4f8a;line-height:1.6;border-left:3px solid #1a6cb0}
+.nota-body.open{display:block}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.stat-box{background:#f8f8f8;border-radius:10px;padding:10px 12px;border:1px solid #eee}
+.stat-label{font-size:11px;color:#888}
+.stat-val{font-size:15px;font-weight:600;color:#1a1a1a}
+.stat-unit{font-size:11px;color:#aaa;font-weight:400}
+.chevron{transition:transform 0.2s;display:inline-block;color:#aaa;font-size:14px}
+.chevron.open{transform:rotate(180deg)}
+.loading{display:flex;align-items:center;justify-content:center;height:60vh;font-size:14px;color:#888}
+.error-view{display:flex;align-items:center;justify-content:center;height:60vh;font-size:14px;color:#c0392b;text-align:center;padding:32px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top-bar">
+    <img class="logo-img" id="logoImg" src="" alt="Dr. Moisés Aceves">
+    <div class="top-bar-info">
+      <div class="top-bar-name" id="topBarName">Dr. Moisés Aceves</div>
+      <div class="top-bar-sub" id="topBarSub">Cardiología clínica y rehabilitación cardiaca</div>
+    </div>
+  </div>
+  <div class="tabs" id="tabsBar" style="display:none">
+    <div class="tab active" onclick="switchTab(0)">💊 Receta</div>
+    <div class="tab" onclick="switchTab(1)">🥗 Nutrición</div>
+    <div class="tab" onclick="switchTab(2)">🫀 Ejercicio</div>
+  </div>
+  <div id="mainContent"><div class="loading">Cargando plan...</div></div>
+</div>
+
+<script>
+const MEAL_LABELS = {desayuno:"Desayuno",colacion_m:"Colación matutina",comida:"Comida",colacion_v:"Colación vespertina",cena:"Cena"};
+const MEAL_ICONS  = {desayuno:"☀️",colacion_m:"🍎",comida:"🍽️",colacion_v:"🥕",cena:"🌙"};
+const mealOptTabs = {};
+const notaOpen = {};
+let DATA = null;
+let currentTab = 0;
+
+// Load logo separately
+document.getElementById('logoImg').src='/logo.png';
+
+async function init() {
+  const id = location.pathname.split('/').pop();
+  try {
+    const resp = await fetch('/api/patients/' + id);
+    if (!resp.ok) throw new Error('not found');
+    const result = await resp.json();
+    DATA = result.data;
+    document.getElementById('topBarName').textContent = (DATA.doctor && DATA.doctor.name) || 'Dr. Moisés Aceves';
+    document.getElementById('topBarSub').textContent  = (DATA.doctor && DATA.doctor.esp)  || 'Cardiología clínica y rehabilitación cardiaca';
+    document.getElementById('tabsBar').style.display = 'flex';
+    renderTab(0);
+  } catch(e) {
+    document.getElementById('mainContent').innerHTML = '<div class="error-view">Plan no encontrado.<br>Verifica el link con tu médico.</div>';
+  }
+}
+
+function switchTab(i) {
+  currentTab = i;
+  document.querySelectorAll('.tab').forEach(function(t,idx){ t.classList.toggle('active', idx===i); });
+  renderTab(i);
+}
+
+function renderTab(i) {
+  const mc = document.getElementById('mainContent');
+  mc.className = 'content';
+  if (i===0) mc.innerHTML = renderReceta();
+  if (i===1) mc.innerHTML = renderNutricion();
+  if (i===2) mc.innerHTML = renderEjercicio();
+}
+
+function val(v) { return v||'—'; }
+
+function renderReceta() {
+  const d = DATA;
+  const meds = d.meds.filter(function(m){return m.name;}).map(function(m){
+    return '<div class="med-card"><div class="med-name">'+m.name+'</div><div class="med-detail">'+val(m.dose)+' · '+val(m.freq)+'</div>'+(m.notes?'<div class="med-detail" style="margin-top:4px;color:#888">'+m.notes+'</div>':'')+'</div>';
+  }).join('')||'<div class="med-card"><div class="med-detail">Sin medicamentos prescritos</div></div>';
+  return '<div class="section"><div class="section-title">Paciente</div><div class="field-row"><div class="field-label">Nombre</div><div class="field-value">'+val(d.patient.name)+'</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="field-label">Edad</div><div class="field-value">'+val(d.patient.age)+'</div></div><div><div class="field-label">Peso / Talla</div><div class="field-value">'+val(d.patient.weight)+' · '+val(d.patient.height)+'</div></div></div><div class="field-row" style="margin-top:8px"><div class="field-label">Diagnóstico</div><div class="field-value">'+val(d.patient.dx)+'</div></div></div><div class="section"><div class="section-title">Medicamentos</div>'+meds+'</div>'+(d.indications?'<div class="section"><div class="section-title">Indicaciones especiales</div><div class="field-value" style="font-size:13px;line-height:1.6;color:#444">'+d.indications+'</div></div>':'');
+}
+
+function renderNutricion() {
+  const n = DATA.nutrition;
+  const meals = Object.keys(MEAL_LABELS).map(function(key) {
+    const opts = n.meals[key];
+    if (!mealOptTabs[key]) mealOptTabs[key] = 0;
+    const cur = mealOptTabs[key];
+    const tabBtns = [0,1,2,3].map(function(i){ return '<button class="opt-tab '+(cur===i?'active':'')+'" onclick="setMealTab(''+key+'','+i+')">Op. '+(i+1)+'</button>'; }).join('');
+    return '<div class="meal-block"><div class="meal-title">'+MEAL_ICONS[key]+' '+MEAL_LABELS[key]+'</div><div class="options-tabs">'+tabBtns+'</div><div class="opt-content">'+(opts[cur]||'<span style="color:#bbb">Sin contenido</span>')+'</div></div>';
+  }).join('');
+  return '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">'+[['Energía',n.kcal,'kcal/día'],['Proteína',n.protein,'g/día'],['Hidratos',n.carbs,'g/día'],['Grasas',n.fat,'%'],['Fibra',n.fiber,'g/día'],['Sodio',n.sodium,'g/día']].map(function(a){ return '<div class="stat-box"><div class="stat-label">'+a[0]+'</div><div class="stat-val">'+(a[1]||'—')+' <span class="stat-unit">'+a[2]+'</span></div></div>'; }).join('')+'</div><div class="stat-box"><div class="stat-label">Líquidos</div><div class="stat-val">'+(n.liquids||'—')+' <span class="stat-unit">L/día</span></div></div></div><div class="section"><div class="section-title">Plan de alimentación</div>'+meals+'</div>'+(n.goals?'<div class="section"><div class="section-title">Objetivos</div><div class="field-value" style="font-size:13px;line-height:1.7;color:#444">'+n.goals+'</div></div>':'');
+}
+
+function renderEjercicio() {
+  const ex = DATA.exercise;
+  const days = ex.days.map(function(day,di) {
+    const rows = day.exercises.filter(function(r){return r[0];}).map(function(row,ri) {
+      const id = di+'-'+ri;
+      const nota = row[4]||'';
+      const isOpen = notaOpen[id]||false;
+      const notaHtml = nota ? '<button class="nota-toggle" id="notabtn-'+id+'" onclick="toggleNota(''+id+'')">'+(isOpen?'▲ Ocultar nota técnica':'▾ Ver nota técnica')+'</button><div class="nota-body '+(isOpen?'open':'')+'" id="nota-'+id+'">'+nota+'</div>' : '';
+      return '<tr><td><div>'+row[0]+'</div>'+notaHtml+'</td><td style="text-align:center">'+(row[1]||'—')+'</td><td style="text-align:center">'+(row[2]||'—')+'</td><td style="text-align:center">'+(row[3]||'—')+'</td></tr>';
+    }).join('');
+    return '<div class="exercise-day"><div class="day-header" onclick="toggleDay('+di+')"><span class="day-title">'+day.title+'</span><div style="display:flex;align-items:center;gap:8px"><span class="day-type '+day.type+'">'+(day.type==='fuerza'?'Fuerza':'Cardio')+'</span><span class="chevron" id="chev'+di+'">▾</span></div></div><div class="day-body" id="dayBody'+di+'"><table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>'+rows+'</table></div></div>';
+  }).join('');
+  return '<div class="section"><div class="section-title">Programa semanal</div>'+days+'</div>'+(ex.weeks?'<div class="section"><div class="section-title">Duración</div><div class="field-value">Programa de <strong>'+ex.weeks+'</strong> semanas</div></div>':'');
+}
+
+function setMealTab(key,i) { mealOptTabs[key]=i; renderTab(currentTab); }
+function toggleDay(i) { document.getElementById('dayBody'+i).classList.toggle('open'); document.getElementById('chev'+i).classList.toggle('open'); }
+function toggleNota(id) {
+  notaOpen[id] = !notaOpen[id];
+  document.getElementById('nota-'+id).classList.toggle('open', notaOpen[id]);
+  document.getElementById('notabtn-'+id).textContent = notaOpen[id]?'▲ Ocultar nota técnica':'▾ Ver nota técnica';
+}
+
+init();
+</script>
+</body>
+</html>
