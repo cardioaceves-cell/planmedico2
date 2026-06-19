@@ -41,15 +41,8 @@ app.get('/api/patients/:id', async (req, res) => {
   try {
     const r = await db.query('SELECT * FROM patients WHERE id = $1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({error: 'No encontrado'});
-    // Include reminders
-    const rem = await db.query('SELECT reminder FROM reminders WHERE patient_id = $1 ORDER BY created_at DESC', [req.params.id]);
-    const patient = r.rows[0];
-    res.json({
-      id: patient.id,
-      data: patient.data,
-      reminders: rem.rows.map(r => r.reminder),
-      planStart: patient.created_at
-    });
+    const rem = await db.query('SELECT reminder FROM reminders WHERE patient_id = $1 ORDER BY created_at ASC', [req.params.id]);
+    res.json({id: r.rows[0].id, data: r.rows[0].data, reminders: rem.rows.map(r => r.reminder), planStart: r.rows[0].created_at});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
@@ -74,16 +67,8 @@ app.delete('/api/patients/:id', async (req, res) => {
 
 app.post('/api/reminders/:id', async (req, res) => {
   try {
-    const reminder = req.body;
-    await db.query('INSERT INTO reminders (patient_id, reminder) VALUES ($1, $2)', [req.params.id, reminder]);
+    await db.query('INSERT INTO reminders (patient_id, reminder) VALUES ($1, $2)', [req.params.id, req.body]);
     res.json({ok: true});
-  } catch(e) { res.status(500).json({error: e.message}); }
-});
-
-app.get('/api/reminders/:id', async (req, res) => {
-  try {
-    const r = await db.query('SELECT * FROM reminders WHERE patient_id = $1 ORDER BY created_at DESC', [req.params.id]);
-    res.json(r.rows.map(row => row.reminder));
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
@@ -94,19 +79,16 @@ app.post('/api/send-code', async (req, res) => {
     const p = await db.query('SELECT id FROM patients WHERE id = $1', [patientId]);
     if (!p.rows.length) return res.status(404).json({error: 'Plan no encontrado'});
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    await db.query('INSERT INTO access_codes (patient_id, email, code) VALUES ($1, $2, $3)',
-      [patientId, email.toLowerCase(), code]);
+    await db.query('INSERT INTO access_codes (patient_id, email, code) VALUES ($1, $2, $3)', [patientId, email.toLowerCase(), code]);
     res.json({ok: true, code});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
 app.get('/api/codes', async (req, res) => {
   try {
-    const r = await db.query(`
-      SELECT ac.code, ac.email, ac.patient_id, ac.created_at, p.data
+    const r = await db.query(`SELECT ac.code, ac.email, ac.patient_id, ac.created_at, p.data
       FROM access_codes ac JOIN patients p ON p.id = ac.patient_id
-      WHERE ac.used = FALSE ORDER BY ac.created_at DESC LIMIT 20
-    `);
+      WHERE ac.used = FALSE ORDER BY ac.created_at DESC LIMIT 20`);
     res.json(r.rows.map(row => ({
       code: row.code, email: row.email, patientId: row.patient_id,
       name: row.data && row.data.patient ? row.data.patient.name : 'Sin nombre',
@@ -122,7 +104,7 @@ app.post('/api/verify-code', async (req, res) => {
       'SELECT * FROM access_codes WHERE patient_id = $1 AND email = $2 AND code = $3 AND used = FALSE ORDER BY created_at DESC LIMIT 1',
       [patientId, email.toLowerCase(), code]
     );
-    if (!r.rows.length) return res.status(401).json({error: 'Código incorrecto o expirado'});
+    if (!r.rows.length) return res.status(401).json({error: 'Codigo incorrecto'});
     await db.query('UPDATE access_codes SET used = TRUE WHERE id = $1', [r.rows[0].id]);
     res.json({ok: true});
   } catch(e) { res.status(500).json({error: e.message}); }
@@ -131,6 +113,5 @@ app.post('/api/verify-code', async (req, res) => {
 app.get('/p/:id', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'patient.html')); });
 app.get('/editor', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'editor.html')); });
 
-initDB().then(() => {
-  app.listen(PORT, () => console.log('Server running on port ' + PORT));
-}).catch(e => { console.error('DB error:', e.message); process.exit(1); });
+initDB().then(() => { app.listen(PORT, () => console.log('Server running on port ' + PORT)); })
+  .catch(e => { console.error('DB error:', e.message); process.exit(1); });
