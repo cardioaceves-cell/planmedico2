@@ -75,29 +75,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script>
-const MEAL_LABELS = {desayuno:"Desayuno",colacion_m:"Colación matutina",comida:"Comida",colacion_v:"Colación vespertina",cena:"Cena"};
-const MEAL_ICONS  = {desayuno:"☀️",colacion_m:"🍎",comida:"🍽️",colacion_v:"🥕",cena:"🌙"};
-const mealOptTabs = {};
-const notaOpen = {};
-let DATA = null;
-let currentTab = 0;
+var MEAL_LABELS = {desayuno:"Desayuno",colacion_m:"Colacion matutina",comida:"Comida",colacion_v:"Colacion vespertina",cena:"Cena"};
+var DATA = null;
+var mealOptTabs = {};
+var notaOpen = {};
+var currentTab = 0;
 
-// Load logo separately
-document.getElementById('logoImg').src='/logo.png';
+document.getElementById('logoImg').src = '/logo.png';
 
 async function init() {
-  const id = location.pathname.split('/').pop();
+  var id = location.pathname.split('/').pop();
   try {
-    const resp = await fetch('/api/patients/' + id);
+    var resp = await fetch('/api/patients/' + id);
     if (!resp.ok) throw new Error('not found');
-    const result = await resp.json();
+    var result = await resp.json();
     DATA = result.data;
-    document.getElementById('topBarName').textContent = (DATA.doctor && DATA.doctor.name) || 'Dr. Moisés Aceves';
-    document.getElementById('topBarSub').textContent  = (DATA.doctor && DATA.doctor.esp)  || 'Cardiología clínica y rehabilitación cardiaca';
+    document.getElementById('topBarName').textContent = (DATA.doctor && DATA.doctor.name) || 'Dr. Moises Aceves';
+    document.getElementById('topBarSub').textContent = (DATA.doctor && DATA.doctor.esp) || 'Cardiologia clinica y rehabilitacion cardiaca';
     document.getElementById('tabsBar').style.display = 'flex';
     renderTab(0);
   } catch(e) {
-    document.getElementById('mainContent').innerHTML = '<div class="error-view">Plan no encontrado.<br>Verifica el link con tu médico.</div>';
+    document.getElementById('mainContent').innerHTML = '<div class="error-view">Plan no encontrado.</div>';
   }
 }
 
@@ -108,56 +106,132 @@ function switchTab(i) {
 }
 
 function renderTab(i) {
-  const mc = document.getElementById('mainContent');
+  var mc = document.getElementById('mainContent');
   mc.className = 'content';
   if (i===0) mc.innerHTML = renderReceta();
   if (i===1) mc.innerHTML = renderNutricion();
   if (i===2) mc.innerHTML = renderEjercicio();
+  bindEvents();
 }
 
-function val(v) { return v||'—'; }
+function bindEvents() {
+  document.querySelectorAll('[data-meal-key]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var key = this.getAttribute('data-meal-key');
+      var idx = parseInt(this.getAttribute('data-meal-idx'));
+      mealOptTabs[key] = idx;
+      renderTab(currentTab);
+    });
+  });
+  document.querySelectorAll('[data-toggle-day]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var i = this.getAttribute('data-toggle-day');
+      var body = document.getElementById('dayBody'+i);
+      var chev = document.getElementById('chev'+i);
+      if (body) body.classList.toggle('open');
+      if (chev) chev.classList.toggle('open');
+    });
+  });
+  document.querySelectorAll('[data-toggle-nota]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-toggle-nota');
+      notaOpen[id] = !notaOpen[id];
+      var body = document.getElementById('nota-'+id);
+      if (body) {
+        body.classList.toggle('open', notaOpen[id]);
+        this.textContent = notaOpen[id] ? 'Ocultar nota tecnica' : 'Ver nota tecnica';
+      }
+    });
+  });
+}
+
+function val(v) { return v || '—'; }
 
 function renderReceta() {
-  const d = DATA;
-  const meds = d.meds.filter(function(m){return m.name;}).map(function(m){
-    return '<div class="med-card"><div class="med-name">'+m.name+'</div><div class="med-detail">'+val(m.dose)+' · '+val(m.freq)+'</div>'+(m.notes?'<div class="med-detail" style="margin-top:4px;color:#888">'+m.notes+'</div>':'')+'</div>';
-  }).join('')||'<div class="med-card"><div class="med-detail">Sin medicamentos prescritos</div></div>';
-  return '<div class="section"><div class="section-title">Paciente</div><div class="field-row"><div class="field-label">Nombre</div><div class="field-value">'+val(d.patient.name)+'</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="field-label">Edad</div><div class="field-value">'+val(d.patient.age)+'</div></div><div><div class="field-label">Peso / Talla</div><div class="field-value">'+val(d.patient.weight)+' · '+val(d.patient.height)+'</div></div></div><div class="field-row" style="margin-top:8px"><div class="field-label">Diagnóstico</div><div class="field-value">'+val(d.patient.dx)+'</div></div></div><div class="section"><div class="section-title">Medicamentos</div>'+meds+'</div>'+(d.indications?'<div class="section"><div class="section-title">Indicaciones especiales</div><div class="field-value" style="font-size:13px;line-height:1.6;color:#444">'+d.indications+'</div></div>':'');
+  var d = DATA;
+  var meds = '';
+  d.meds.filter(function(m){ return m.name; }).forEach(function(m) {
+    meds += '<div class="med-card">';
+    meds += '<div class="med-name">' + m.name + '</div>';
+    meds += '<div class="med-detail">' + val(m.dose) + ' - ' + val(m.freq) + '</div>';
+    if (m.notes) meds += '<div class="med-detail" style="margin-top:4px;color:#888">' + m.notes + '</div>';
+    meds += '</div>';
+  });
+  if (!meds) meds = '<div class="med-card"><div class="med-detail">Sin medicamentos prescritos</div></div>';
+  var html = '<div class="section"><div class="section-title">Paciente</div>';
+  html += '<div class="field-row"><div class="field-label">Nombre</div><div class="field-value">' + val(d.patient.name) + '</div></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  html += '<div><div class="field-label">Edad</div><div class="field-value">' + val(d.patient.age) + '</div></div>';
+  html += '<div><div class="field-label">Peso / Talla</div><div class="field-value">' + val(d.patient.weight) + ' - ' + val(d.patient.height) + '</div></div>';
+  html += '</div>';
+  html += '<div class="field-row" style="margin-top:8px"><div class="field-label">Diagnostico</div><div class="field-value">' + val(d.patient.dx) + '</div></div>';
+  html += '</div>';
+  html += '<div class="section"><div class="section-title">Medicamentos</div>' + meds + '</div>';
+  if (d.indications) {
+    html += '<div class="section"><div class="section-title">Indicaciones especiales</div>';
+    html += '<div class="field-value" style="font-size:13px;line-height:1.6;color:#444">' + d.indications + '</div></div>';
+  }
+  return html;
 }
 
 function renderNutricion() {
-  const n = DATA.nutrition;
-  const meals = Object.keys(MEAL_LABELS).map(function(key) {
-    const opts = n.meals[key];
+  var n = DATA.nutrition;
+  var keys = ['desayuno','colacion_m','comida','colacion_v','cena'];
+  var meals = '';
+  keys.forEach(function(key) {
+    var opts = n.meals[key];
     if (!mealOptTabs[key]) mealOptTabs[key] = 0;
-    const cur = mealOptTabs[key];
-    const tabBtns = [0,1,2,3].map(function(i){ return '<button class="opt-tab '+(cur===i?'active':'')+'" onclick="setMealTab(''+key+'','+i+')">Op. '+(i+1)+'</button>'; }).join('');
-    return '<div class="meal-block"><div class="meal-title">'+MEAL_ICONS[key]+' '+MEAL_LABELS[key]+'</div><div class="options-tabs">'+tabBtns+'</div><div class="opt-content">'+(opts[cur]||'<span style="color:#bbb">Sin contenido</span>')+'</div></div>';
-  }).join('');
-  return '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">'+[['Energía',n.kcal,'kcal/día'],['Proteína',n.protein,'g/día'],['Hidratos',n.carbs,'g/día'],['Grasas',n.fat,'%'],['Fibra',n.fiber,'g/día'],['Sodio',n.sodium,'g/día']].map(function(a){ return '<div class="stat-box"><div class="stat-label">'+a[0]+'</div><div class="stat-val">'+(a[1]||'—')+' <span class="stat-unit">'+a[2]+'</span></div></div>'; }).join('')+'</div><div class="stat-box"><div class="stat-label">Líquidos</div><div class="stat-val">'+(n.liquids||'—')+' <span class="stat-unit">L/día</span></div></div></div><div class="section"><div class="section-title">Plan de alimentación</div>'+meals+'</div>'+(n.goals?'<div class="section"><div class="section-title">Objetivos</div><div class="field-value" style="font-size:13px;line-height:1.7;color:#444">'+n.goals+'</div></div>':'');
+    var cur = mealOptTabs[key];
+    var tabBtns = '';
+    for (var i=0; i<4; i++) {
+      var active = (cur===i) ? 'active' : '';
+      tabBtns += '<button class="opt-tab ' + active + '" data-meal-key="' + key + '" data-meal-idx="' + i + '">Op. ' + (i+1) + '</button>';
+    }
+    meals += '<div class="meal-block">';
+    meals += '<div class="meal-title">' + MEAL_LABELS[key] + '</div>';
+    meals += '<div class="options-tabs">' + tabBtns + '</div>';
+    meals += '<div class="opt-content">' + (opts[cur] || '<span style="color:#bbb">Sin contenido</span>') + '</div>';
+    meals += '</div>';
+  });
+  var statsData = [['Energia',n.kcal,'kcal/dia'],['Proteina',n.protein,'g/dia'],['Hidratos',n.carbs,'g/dia'],['Grasas',n.fat,'%'],['Fibra',n.fiber,'g/dia'],['Sodio',n.sodium,'g/dia']];
+  var html = '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">';
+  statsData.forEach(function(s) {
+    html += '<div class="stat-box"><div class="stat-label">' + s[0] + '</div><div class="stat-val">' + (s[1]||'—') + ' <span class="stat-unit">' + s[2] + '</span></div></div>';
+  });
+  html += '</div><div class="stat-box"><div class="stat-label">Liquidos</div><div class="stat-val">' + (n.liquids||'—') + ' <span class="stat-unit">L/dia</span></div></div></div>';
+  html += '<div class="section"><div class="section-title">Plan de alimentacion</div>' + meals + '</div>';
+  if (n.goals) html += '<div class="section"><div class="section-title">Objetivos</div><div class="field-value" style="font-size:13px;line-height:1.7;color:#444">' + n.goals + '</div></div>';
+  return html;
 }
 
 function renderEjercicio() {
-  const ex = DATA.exercise;
-  const days = ex.days.map(function(day,di) {
-    const rows = day.exercises.filter(function(r){return r[0];}).map(function(row,ri) {
-      const id = di+'-'+ri;
-      const nota = row[4]||'';
-      const isOpen = notaOpen[id]||false;
-      const notaHtml = nota ? '<button class="nota-toggle" id="notabtn-'+id+'" onclick="toggleNota(''+id+'')">'+(isOpen?'▲ Ocultar nota técnica':'▾ Ver nota técnica')+'</button><div class="nota-body '+(isOpen?'open':'')+'" id="nota-'+id+'">'+nota+'</div>' : '';
-      return '<tr><td><div>'+row[0]+'</div>'+notaHtml+'</td><td style="text-align:center">'+(row[1]||'—')+'</td><td style="text-align:center">'+(row[2]||'—')+'</td><td style="text-align:center">'+(row[3]||'—')+'</td></tr>';
-    }).join('');
-    return '<div class="exercise-day"><div class="day-header" onclick="toggleDay('+di+')"><span class="day-title">'+day.title+'</span><div style="display:flex;align-items:center;gap:8px"><span class="day-type '+day.type+'">'+(day.type==='fuerza'?'Fuerza':'Cardio')+'</span><span class="chevron" id="chev'+di+'">▾</span></div></div><div class="day-body" id="dayBody'+di+'"><table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>'+rows+'</table></div></div>';
-  }).join('');
-  return '<div class="section"><div class="section-title">Programa semanal</div>'+days+'</div>'+(ex.weeks?'<div class="section"><div class="section-title">Duración</div><div class="field-value">Programa de <strong>'+ex.weeks+'</strong> semanas</div></div>':'');
-}
-
-function setMealTab(key,i) { mealOptTabs[key]=i; renderTab(currentTab); }
-function toggleDay(i) { document.getElementById('dayBody'+i).classList.toggle('open'); document.getElementById('chev'+i).classList.toggle('open'); }
-function toggleNota(id) {
-  notaOpen[id] = !notaOpen[id];
-  document.getElementById('nota-'+id).classList.toggle('open', notaOpen[id]);
-  document.getElementById('notabtn-'+id).textContent = notaOpen[id]?'▲ Ocultar nota técnica':'▾ Ver nota técnica';
+  var ex = DATA.exercise;
+  var days = '';
+  ex.days.forEach(function(day, di) {
+    var rows = '';
+    day.exercises.filter(function(r){ return r[0]; }).forEach(function(row, ri) {
+      var id = di + '-' + ri;
+      var nota = row[4] || '';
+      var isOpen = notaOpen[id] || false;
+      rows += '<tr><td><div>' + row[0] + '</div>';
+      if (nota) {
+        rows += '<button class="nota-toggle" id="notabtn-' + id + '" data-toggle-nota="' + id + '">' + (isOpen ? 'Ocultar nota' : 'Ver nota tecnica') + '</button>';
+        rows += '<div class="nota-body ' + (isOpen?'open':'') + '" id="nota-' + id + '">' + nota + '</div>';
+      }
+      rows += '</td><td style="text-align:center">' + (row[1]||'—') + '</td><td style="text-align:center">' + (row[2]||'—') + '</td><td style="text-align:center">' + (row[3]||'—') + '</td></tr>';
+    });
+    var typeLabel = day.type === 'fuerza' ? 'Fuerza' : 'Cardio';
+    days += '<div class="exercise-day">';
+    days += '<div class="day-header" data-toggle-day="' + di + '">';
+    days += '<span class="day-title">' + day.title + '</span>';
+    days += '<div style="display:flex;align-items:center;gap:8px"><span class="day-type ' + day.type + '">' + typeLabel + '</span><span class="chevron" id="chev' + di + '">v</span></div>';
+    days += '</div>';
+    days += '<div class="day-body" id="dayBody' + di + '"><table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table></div>';
+    days += '</div>';
+  });
+  var html = '<div class="section"><div class="section-title">Programa semanal</div>' + days + '</div>';
+  if (ex.weeks) html += '<div class="section"><div class="section-title">Duracion</div><div class="field-value">Programa de <strong>' + ex.weeks + '</strong> semanas</div></div>';
+  return html;
 }
 
 init();
