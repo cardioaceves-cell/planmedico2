@@ -2,12 +2,11 @@
   "name": "planmedico-app",
   "version": "1.0.0",
   "main": "src/server.js",
-  "scripts": {
-    "start": "node src/server.js"
-  },
+  "scripts": { "start": "node src/server.js" },
   "dependencies": {
     "express": "^4.18.2",
     "nanoid": "^3.3.7",
-    "pg": "^8.11.3"
+    "pg": "^8.11.3",
+    "nodemailer": "^6.9.9"
   }
 }
