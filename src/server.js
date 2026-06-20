@@ -38,6 +38,7 @@ app.post('/api/patients', async (req, res) => {
 });
 
 app.get('/api/patients/:id', async (req, res) => {
+app.get('/sarita', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'sarita-medicamentos.html')); });
   try {
     const r = await db.query('SELECT * FROM patients WHERE id = $1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({error: 'No encontrado'});
