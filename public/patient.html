@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Plan Médico</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#FFFFFF;color:#1A2D5A}
+.app{max-width:480px;margin:0 auto;min-height:100vh;background:#FFFFFF}
+
+/* HEADER */
+.top-bar{padding:16px 16px 14px;background:#8B0000;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+.logo-img{height:52px;width:auto;object-fit:contain;flex-shrink:0;border-radius:8px}
+.top-bar-info{flex:1;min-width:0}
+.top-bar-name{font-size:16px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-bar-sub{font-size:11px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+
+/* TABS */
+.tabs{display:flex;background:#fff;border-bottom:2px solid #e8e8e8;position:sticky;top:70px;z-index:9}
+.tab{flex:1;padding:10px 4px;font-size:11px;text-align:center;cursor:pointer;color:#aaa;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500}
+.tab.active{color:#1A2D5A;border-bottom:2px solid #D4A017;font-weight:700}
+
+/* CONTENT */
+.content{padding:16px}
+.section{margin-bottom:20px}
+.section-title{font-size:10px;font-weight:700;color:#8B0000;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.section-title::after{content:'';flex:1;height:1px;background:#D4A017;opacity:0.4}
+
+/* PATIENT INFO */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.info-box{background:#fff;border-radius:10px;padding:10px 12px;border-left:3px solid #D4A017}
+.info-label{font-size:10px;color:#888;margin-bottom:2px}
+.info-value{font-size:13px;font-weight:600;color:#1A2D5A;line-height:1.4}
+.info-full{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;border-left:3px solid #D4A017}
+
+/* MED CARDS */
+.med-card{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:3px solid #D4A017;display:flex;align-items:flex-start;gap:12px}
+.med-info{flex:1}
+.med-name{font-size:14px;font-weight:700;color:#1A2D5A}
+.med-detail{font-size:12px;color:#666;margin-top:3px}
+.med-time{font-size:11px;color:#8B0000;font-weight:600;margin-top:4px}
+.med-note{font-size:11px;color:#888;margin-top:3px;line-height:1.5}
+.med-alert{display:flex;align-items:center;gap:8px;margin-top:8px}
+.alert-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px}
+.alert-on{background:#FFF3D0;color:#A07800}
+.alert-off{background:#f0f0f0;color:#aaa}
+.toggle{width:36px;height:20px;border-radius:10px;position:relative;flex-shrink:0;cursor:pointer;margin-top:4px;transition:background 0.2s}
+.toggle.on{background:#D4A017}
+.toggle.off{background:#ddd}
+.toggle-knob{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle.on .toggle-knob{left:18px}
+.toggle.off .toggle-knob{left:2px}
+
+/* INDICATIONS */
+.indications-box{background:#fff;border-radius:12px;padding:14px;border-left:3px solid #8B0000}
+.indications-text{font-size:13px;color:#444;line-height:1.7;white-space:pre-wrap}
+
+/* NUTRITION */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-box{background:#fff;border-radius:10px;padding:10px 12px;border-left:3px solid #D4A017}
+.stat-label{font-size:10px;color:#888}
+.stat-val{font-size:16px;font-weight:700;color:#1A2D5A}
+.stat-unit{font-size:10px;color:#aaa;font-weight:400}
+.meal-block{margin-bottom:18px}
+.meal-title{font-size:13px;font-weight:700;color:#1A2D5A;margin-bottom:8px}
+.opt-tabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.opt-tab{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid #D4A017;cursor:pointer;color:#A07800;background:#fff;font-family:inherit;font-weight:500}
+.opt-tab.active{background:#D4A017;color:#fff;border-color:#D4A017}
+.opt-content{font-size:13px;color:#444;line-height:1.6;background:#fff;border-radius:10px;padding:12px 14px;white-space:pre-wrap;border-left:3px solid #D4A017}
+
+/* EXERCISE */
+.ex-day{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:3px solid #D4A017}
+.day-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.day-title{font-size:13px;font-weight:700;color:#1A2D5A}
+.day-type{font-size:10px;padding:3px 10px;border-radius:10px;font-weight:600}
+.day-type.fuerza{background:#FFF3D0;color:#A07800}
+.day-type.cardio{background:#E6F7EE;color:#1a7a3f}
+.day-body{display:none;margin-top:10px}
+.day-body.open{display:block}
+.ex-table{width:100%;font-size:12px;border-collapse:collapse}
+.ex-table th{text-align:left;color:#8B0000;font-weight:700;padding:4px 6px;border-bottom:1px solid #f0e8d0;font-size:10px;text-transform:uppercase}
+.ex-table td{padding:7px 6px;border-bottom:1px solid #f5f5f5;color:#1A2D5A;vertical-align:top}
+.nota-toggle{font-size:11px;color:#D4A017;cursor:pointer;background:none;border:none;font-family:inherit;margin-top:2px;display:block;font-weight:600}
+.nota-body{display:none;margin-top:6px;padding:8px 10px;background:#FFF3D0;border-radius:8px;font-size:12px;color:#7A5800;line-height:1.6;border-left:3px solid #D4A017}
+.nota-body.open{display:block}
+.chevron{transition:transform 0.2s;display:inline-block;color:#D4A017;font-size:16px;font-weight:700}
+.chevron.open{transform:rotate(180deg)}
+
+/* CONTACT */
+.contact-card{background:#fff;border-radius:12px;padding:18px;margin-bottom:12px;display:flex;align-items:center;gap:14px;border-left:3px solid #D4A017}
+.contact-icon{width:44px;height:44px;border-radius:50%;background:#FFF3D0;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.contact-label{font-size:10px;color:#888;margin-bottom:3px}
+.contact-value{font-size:14px;font-weight:700;color:#1A2D5A}
+.contact-link{display:block;margin-top:5px;font-size:12px;color:#8B0000;text-decoration:none;font-weight:600}
+.contact-footer{text-align:center;margin-top:20px;font-size:11px;color:#aaa;line-height:1.8}
+
+/* PAYMENT */
+.payment-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#FFFFFF}
+.payment-logo{height:100px;width:auto;object-fit:contain;margin-bottom:20px}
+.payment-title{font-size:22px;font-weight:700;color:#8B0000;text-align:center;margin-bottom:6px}
+.payment-sub{font-size:13px;color:#1A2D5A;text-align:center;margin-bottom:32px;line-height:1.6;font-weight:500}
+.payment-card{width:100%;max-width:380px;background:#fff;border-radius:16px;padding:24px;border-left:4px solid #D4A017;margin-bottom:16px;box-shadow:0 4px 20px rgba(26,45,90,0.08)}
+.payment-btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.btn-pay{background:#8B0000;color:#fff}
+.btn-code{background:#1A2D5A;color:#fff}
+.btn-already{background:transparent;color:#1A2D5A;border:2px solid #D4A017;font-size:13px;padding:10px;font-weight:600}
+.payment-error{color:#8B0000;font-size:13px;text-align:center;margin-top:8px;min-height:18px}
+.code-input{width:100%;font-size:28px;text-align:center;letter-spacing:8px;padding:16px;border:2px solid #D4A017;border-radius:10px;background:#fff;font-family:monospace;outline:none;margin-bottom:12px;color:#1A2D5A}
+.code-input:focus{border-color:#8B0000}
+.back-link{font-size:13px;color:#888;cursor:pointer;text-align:center;margin-top:8px;text-decoration:underline}
+.error-view{display:flex;align-items:center;justify-content:center;height:60vh;font-size:14px;color:#8B0000;text-align:center;padding:32px}
+
+/* REMINDER POPUP */
+.reminder-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(26,45,90,0.6);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+.reminder-card{background:#fff;border-radius:18px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);border-top:4px solid #8B0000}
+.reminder-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.reminder-icon{width:44px;height:44px;background:#FFF3D0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.reminder-title{font-size:15px;font-weight:700;color:#8B0000;line-height:1.4}
+.reminder-body{font-size:13px;color:#444;line-height:1.7;margin-bottom:14px}
+.reminder-studies{background:#FFF8E8;border-radius:10px;padding:12px;margin-bottom:14px}
+.reminder-study{font-size:13px;color:#1A2D5A;padding:3px 0;display:flex;align-items:flex-start;gap:8px}
+.reminder-actions{margin-bottom:14px}
+.reminder-action-text{font-size:13px;color:#444;padding:5px 0;line-height:1.5;font-weight:500}
+.reminder-wa-btn{display:block;width:100%;padding:13px;background:#25D366;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;text-align:center;text-decoration:none;cursor:pointer;margin-top:4px}
+.reminder-close{width:100%;padding:10px;background:transparent;border:none;color:#aaa;font-size:13px;cursor:pointer;margin-top:6px;font-family:inherit}
+
+/* FOOTER */
+.app-footer{background:#8B0000;padding:12px;text-align:center}
+.app-footer-text{font-size:11px;color:rgba(255,255,255,0.8);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top-bar">
+    <img class="logo-img" id="logoImg" src="/logo.png" alt="Dr. Moises Aceves">
+    <div class="top-bar-info">
+      <div class="top-bar-name" id="topBarName">Dr. Moises Aceves</div>
+      <div class="top-bar-sub" id="topBarSub">Cardiologia clinica y rehabilitacion cardiaca</div>
+    </div>
+  </div>
+  <div class="tabs" id="tabsBar" style="display:none">
+    <div class="tab active" data-tab="0">Medicamentos</div>
+    <div class="tab" data-tab="1">Nutricion</div>
+    <div class="tab" data-tab="2">Ejercicio</div>
+    <div class="tab" data-tab="3">Contacto</div>
+  </div>
+  <div id="mainContent"></div>
+  <div class="app-footer" id="appFooter" style="display:none">
+    <div class="app-footer-text">Dr. Moises Aceves · Cardiologia clinica<br>56 1171 6317 · cardioaceves@gmail.com</div>
+  </div>
+</div>
+
+<script>
+var DATA = null;
+var REMINDERS = [];
+var PLAN_START = null;
+var PATIENT_ID = location.pathname.split('/').pop();
+var sessionKey = 'access_' + PATIENT_ID;
+var hasAccess = localStorage.getItem(sessionKey) === 'true';
+var mealOptTabs = {};
+var notaOpen = {};
+var currentTab = 0;
+var alertsKey = 'alerts_' + PATIENT_ID;
+var alertsState = JSON.parse(localStorage.getItem(alertsKey) || '{}');
+var alertTimeouts = [];
+
+document.querySelectorAll('.tab').forEach(function(t) {
+  t.addEventListener('click', function() {
+    switchTab(parseInt(this.getAttribute('data-tab')));
+  });
+});
+
+function switchTab(i) {
+  currentTab = i;
+  document.querySelectorAll('.tab').forEach(function(t, idx) { t.classList.toggle('active', idx === i); });
+  renderTab(i);
+}
+
+function renderTab(i) {
+  var mc = document.getElementById('mainContent');
+  mc.className = 'content';
+  if (i === 0) mc.innerHTML = renderMedicamentos();
+  if (i === 1) mc.innerHTML = renderNutricion();
+  if (i === 2) mc.innerHTML = renderEjercicio();
+  if (i === 3) mc.innerHTML = renderContacto();
+  bindEvents();
+}
+
+function bindEvents() {
+  document.querySelectorAll('[data-meal-key]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      mealOptTabs[this.getAttribute('data-meal-key')] = parseInt(this.getAttribute('data-meal-idx'));
+      renderTab(currentTab);
+    });
+  });
+  document.querySelectorAll('[data-toggle-day]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var i = this.getAttribute('data-toggle-day');
+      var body = document.getElementById('dayBody' + i);
+      var chev = document.getElementById('chev' + i);
+      if (body) body.classList.toggle('open');
+      if (chev) chev.classList.toggle('open');
+    });
+  });
+  document.querySelectorAll('[data-toggle-nota]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-toggle-nota');
+      notaOpen[id] = !notaOpen[id];
+      var body = document.getElementById('nota-' + id);
+      if (body) {
+        body.classList.toggle('open', notaOpen[id]);
+        this.textContent = notaOpen[id] ? 'Ocultar nota' : 'Ver nota tecnica';
+      }
+    });
+  });
+  document.querySelectorAll('[data-alert-idx]').forEach(function(toggle) {
+    toggle.addEventListener('click', function() {
+      var idx = this.getAttribute('data-alert-idx');
+      var isOn = alertsState[idx] || false;
+      if (!isOn) {
+        requestAlertPermission(idx, this);
+      } else {
+        alertsState[idx] = false;
+        localStorage.setItem(alertsKey, JSON.stringify(alertsState));
+        renderTab(currentTab);
+      }
+    });
+  });
+}
+
+function requestAlertPermission(idx, toggleEl) {
+  if (!('Notification' in window)) {
+    // Safari iOS workaround - save anyway and show visual reminder
+    alertsState[idx] = true;
+    localStorage.setItem(alertsKey, JSON.stringify(alertsState));
+    renderTab(currentTab);
+    showNotifBanner();
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    alertsState[idx] = true;
+    localStorage.setItem(alertsKey, JSON.stringify(alertsState));
+    scheduleAlert(parseInt(idx));
+    renderTab(currentTab);
+    return;
+  }
+  Notification.requestPermission().then(function(perm) {
+    alertsState[idx] = true;
+    localStorage.setItem(alertsKey, JSON.stringify(alertsState));
+    if (perm === 'granted') {
+      scheduleAlert(parseInt(idx));
+    } else {
+      showNotifBanner();
+    }
+    renderTab(currentTab);
+  });
+}
+
+function showNotifBanner() {
+  var existing = document.getElementById('notifBanner');
+  if (existing) return;
+  var banner = document.createElement('div');
+  banner.id = 'notifBanner';
+  banner.style.cssText = 'position:fixed;bottom:20px;left:16px;right:16px;background:#1A2D5A;color:#fff;padding:14px 16px;border-radius:12px;font-size:13px;z-index:200;line-height:1.5;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Entendido';
+  closeBtn.style.cssText = 'background:#D4A017;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;display:block;margin-left:auto';
+  closeBtn.onclick = function() { banner.remove(); };
+  banner.innerHTML = '<div style="font-weight:700;margin-bottom:4px">Para activar alertas en iPhone:</div>' +
+    '<div>1. Agrega esta app a tu pantalla de inicio desde Safari</div>' +
+    '<div>2. Abrela desde ahi y activa el recordatorio</div>';
+  banner.appendChild(closeBtn);
+  document.body.appendChild(banner);
+}
+
+function scheduleAlert(idx) {
+  if (!DATA || !DATA.meds) return;
+  var is2nd = String(idx).indexOf('_2') !== -1;
+  var realIdx = is2nd ? parseInt(String(idx).replace('_2', '')) : parseInt(idx);
+  var med = DATA.meds[realIdx];
+  if (!med) return;
+  var timeStr = is2nd ? med.alert_time2 : med.alert_time;
+  if (!timeStr) return;
+  var parts = timeStr.split(':');
+  var now = new Date();
+  var target = new Date();
+  target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  var diff = target - now;
+  var label = is2nd ? '2a toma — ' + timeStr : timeStr;
+  var t = setTimeout(function() {
+    new Notification('Medicamento — ' + label, {
+      body: med.name + (med.dose ? ' ' + med.dose : '') + '\nDr. Moises Aceves',
+      icon: '/logo.png'
+    });
+  }, diff);
+  alertTimeouts.push(t);
+}
+
+function scheduleAllAlerts() {
+  alertTimeouts.forEach(function(t) { clearTimeout(t); });
+  alertTimeouts = [];
+  if (!DATA || !DATA.meds) return;
+  DATA.meds.forEach(function(med, idx) {
+    if (alertsState[idx] && med.alert_time && Notification.permission === 'granted') {
+      scheduleAlert(idx);
+    }
+  });
+}
+
+function val(v) { return v || '-'; }
+
+function renderMedicamentos() {
+  var d = DATA;
+  var html = '';
+  html += '<div class="section"><div class="section-title">Paciente</div>';
+  html += '<div class="info-grid">';
+  html += '<div class="info-box"><div class="info-label">Nombre</div><div class="info-value">' + val(d.patient.name) + '</div></div>';
+  html += '<div class="info-box"><div class="info-label">Edad</div><div class="info-value">' + val(d.patient.age) + '</div></div>';
+  html += '<div class="info-box"><div class="info-label">Peso</div><div class="info-value">' + val(d.patient.weight) + '</div></div>';
+  html += '<div class="info-box"><div class="info-label">Talla</div><div class="info-value">' + val(d.patient.height) + '</div></div>';
+  html += '</div>';
+  html += '<div class="info-full"><div class="info-label">Diagnostico</div><div class="info-value">' + val(d.patient.dx) + '</div></div>';
+  html += '</div>';
+
+  var meds = d.meds.filter(function(m) { return m.name; });
+  if (meds.length) {
+    html += '<div class="section"><div class="section-title">Medicamentos</div>';
+    meds.forEach(function(m, idx) {
+      var isOn = alertsState[idx] || false;
+      html += '<div class="med-card">';
+      html += '<div class="med-info">';
+      html += '<div class="med-name">' + m.name + '</div>';
+      html += '<div class="med-detail">' + val(m.dose) + ' · ' + val(m.freq) + '</div>';
+      if (m.alert_time) html += '<div class="med-time">Recordatorio: ' + m.alert_time + '</div>';
+      if (m.notes) html += '<div class="med-note">' + m.notes + '</div>';
+      if (m.alert_time) {
+        html += '<div class="med-alert">';
+        html += '<span class="alert-badge ' + (isOn ? 'alert-on' : 'alert-off') + '">' + (isOn ? 'Alerta ON' : 'Alerta OFF') + '</span>';
+        html += '</div>';
+      }
+      if (m.alert_time2) {
+        var isOn2 = alertsState[idx + '_2'] || false;
+        html += '<div class="med-time">2a toma: ' + m.alert_time2 + '</div>';
+        html += '<div class="med-alert">';
+        html += '<span class="alert-badge ' + (isOn2 ? 'alert-on' : 'alert-off') + '">' + (isOn2 ? 'Alerta 2a toma ON' : 'Alerta 2a toma OFF') + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+      if (m.alert_time) {
+        html += '<div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">';
+        html += '<div class="toggle ' + (isOn ? 'on' : 'off') + '" data-alert-idx="' + idx + '"><div class="toggle-knob"></div></div>';
+        if (m.alert_time2) {
+          var isOn2 = alertsState[idx + '_2'] || false;
+          html += '<div class="toggle ' + (isOn2 ? 'on' : 'off') + '" data-alert-idx="' + idx + '_2"><div class="toggle-knob"></div></div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (d.indications) {
+    html += '<div class="section"><div class="section-title">Indicaciones especiales</div>';
+    html += '<div class="indications-box"><div class="indications-text">' + d.indications + '</div></div>';
+    html += '</div>';
+  }
+  return html;
+}
+
+function renderNutricion() {
+  var n = DATA.nutrition;
+  var keys = ['desayuno', 'colacion_m', 'comida', 'colacion_v', 'cena'];
+  var labels = {desayuno: 'Desayuno', colacion_m: 'Colacion matutina', comida: 'Comida', colacion_v: 'Colacion vespertina', cena: 'Cena'};
+  var html = '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">';
+  [['Energia', n.kcal, 'kcal/dia'], ['Proteina', n.protein, 'g/dia'], ['Hidratos', n.carbs, 'g/dia'], ['Grasas', n.fat, '%'], ['Fibra', n.fiber, 'g/dia'], ['Sodio', n.sodium, 'g/dia']].forEach(function(s) {
+    html += '<div class="stat-box"><div class="stat-label">' + s[0] + '</div><div class="stat-val">' + (s[1] || '-') + ' <span class="stat-unit">' + s[2] + '</span></div></div>';
+  });
+  html += '</div><div class="stat-box" style="margin-bottom:0"><div class="stat-label">Liquidos</div><div class="stat-val">' + (n.liquids || '-') + ' <span class="stat-unit">L/dia</span></div></div></div>';
+  html += '<div class="section"><div class="section-title">Plan de alimentacion</div>';
+  keys.forEach(function(key) {
+    var opts = n.meals[key];
+    if (!mealOptTabs[key]) mealOptTabs[key] = 0;
+    var cur = mealOptTabs[key];
+    var tabBtns = '';
+    for (var i = 0; i < 4; i++) {
+      tabBtns += '<button class="opt-tab ' + (cur === i ? 'active' : '') + '" data-meal-key="' + key + '" data-meal-idx="' + i + '">Op. ' + (i + 1) + '</button>';
+    }
+    html += '<div class="meal-block"><div class="meal-title">' + labels[key] + '</div>';
+    html += '<div class="opt-tabs">' + tabBtns + '</div>';
+    html += '<div class="opt-content">' + (opts[cur] || '<span style="color:#bbb">Sin contenido</span>') + '</div></div>';
+  });
+  html += '</div>';
+  if (n.goals) html += '<div class="section"><div class="section-title">Objetivos</div><div class="indications-box"><div class="indications-text">' + n.goals + '</div></div></div>';
+  return html;
+}
+
+function renderEjercicio() {
+  var ex = DATA.exercise;
+  var html = '<div class="section"><div class="section-title">Programa semanal</div>';
+  ex.days.forEach(function(day, di) {
+    var rows = '';
+    day.exercises.filter(function(r) { return r[0]; }).forEach(function(row, ri) {
+      var id = di + '-' + ri;
+      var nota = row[4] || '';
+      rows += '<tr><td><div>' + row[0] + '</div>';
+      if (nota) {
+        rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota tecnica') + '</button>';
+        rows += '<div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + nota + '</div>';
+      }
+      rows += '</td><td style="text-align:center">' + (row[1] || '-') + '</td><td style="text-align:center">' + (row[2] || '-') + '</td><td style="text-align:center">' + (row[3] || '-') + '</td></tr>';
+    });
+    html += '<div class="ex-day"><div class="day-header" data-toggle-day="' + di + '">';
+    html += '<span class="day-title">' + day.title + '</span>';
+    html += '<div style="display:flex;align-items:center;gap:8px"><span class="day-type ' + day.type + '">' + (day.type === 'fuerza' ? 'Fuerza' : 'Cardio') + '</span><span class="chevron" id="chev' + di + '">▾</span></div>';
+    html += '</div><div class="day-body" id="dayBody' + di + '"><table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table></div></div>';
+  });
+  html += '</div>';
+  if (ex.weeks) html += '<div class="section"><div class="section-title">Duracion</div><div class="info-box" style="border-left-color:#8B0000"><div class="info-value">Programa de ' + ex.weeks + ' semanas</div></div></div>';
+  return html;
+}
+
+function renderContacto() {
+  var waMsg = encodeURIComponent('Hola Dr. Aceves, me comunico desde mi plan medico.');
+  return '<div class="section"><div class="section-title">Contacto</div>' +
+    '<div class="contact-card"><div class="contact-icon">💬</div><div><div class="contact-label">WhatsApp</div><div class="contact-value">56 1171 6317</div><a class="contact-link" href="https://wa.me/5215611716317?text=' + waMsg + '">Enviar mensaje</a></div></div>' +
+    '<div class="contact-card"><div class="contact-icon">✉️</div><div><div class="contact-label">Correo</div><div class="contact-value">cardioaceves@gmail.com</div><a class="contact-link" href="mailto:cardioaceves@gmail.com">Enviar correo</a></div></div>' +
+    '</div><div class="contact-footer">Dr. Moises Aceves<br>Cardiologia clinica y rehabilitacion cardiaca<br>UMAE Hospital de Cardiologia CMN Siglo XXI</div>';
+}
+
+function checkReminders() {
+  if (!REMINDERS || !REMINDERS.length) return;
+  var now = new Date();
+  var planStart = PLAN_START ? new Date(PLAN_START) : new Date();
+  REMINDERS.forEach(function(r) {
+    if (!r || !r.active) return;
+    var reminderDate;
+    if (r.type === 'days' && r.days) {
+      reminderDate = new Date(planStart.getTime() + r.days * 24 * 60 * 60 * 1000);
+    } else if (r.type === 'date' && r.date) {
+      reminderDate = new Date(r.date + (r.time ? 'T' + r.time : 'T00:00'));
+    }
+    if (!reminderDate) return;
+    var dismissKey = 'dismissed_' + PATIENT_ID + '_' + r.id;
+    if (localStorage.getItem(dismissKey)) return;
+    if (now >= reminderDate) showReminder(r, dismissKey);
+  });
+}
+
+function showReminder(r, dismissKey) {
+  var patientName = DATA && DATA.patient && DATA.patient.name ? DATA.patient.name.split(' ')[0] : 'paciente';
+  var daysVal = r.days || '';
+  var timeLabel = r.type === 'days' ? (daysVal >= 30 ? Math.round(daysVal / 30) + (daysVal >= 60 ? ' meses' : ' mes') : daysVal + ' dias') : 'el tiempo indicado';
+  var studiesHtml = '';
+  if (r.studies && r.studies.length) {
+    r.studies.forEach(function(s) {
+      studiesHtml += '<div class="reminder-study"><span style="color:#8B0000;font-weight:700">✓</span> ' + s + '</div>';
+    });
+  }
+  var actionsHtml = '';
+  if (r.actions) {
+    if (r.actions.valoracion) actionsHtml += '<div class="reminder-action-text">📋 Envia tus resultados para completar tu valoracion</div>';
+    if (r.actions.actualizar) actionsHtml += '<div class="reminder-action-text">🔄 Envia tus resultados para actualizar tu plan</div>';
+    if (r.actions.cita) actionsHtml += '<div class="reminder-action-text">📅 Envia mensaje para agendar tu cita de seguimiento</div>';
+  }
+  var waText = 'Hola Dr. Aceves, me comunico desde mi Plan Cardioprotector.';
+  if (r.actions && r.actions.valoracion) waText = 'Hola Dr. Aceves, adjunto mis resultados para completar mi valoracion.';
+  else if (r.actions && r.actions.actualizar) waText = 'Hola Dr. Aceves, adjunto mis resultados para actualizar mi plan.';
+  else if (r.actions && r.actions.cita) waText = 'Hola Dr. Aceves, me gustaria agendar mi cita de seguimiento.';
+  var waLink = 'https://wa.me/5215611716317?text=' + encodeURIComponent(waText);
+  var overlay = document.createElement('div');
+  overlay.className = 'reminder-overlay';
+  overlay.id = 'reminderOverlay';
+  overlay.innerHTML = '<div class="reminder-card">' +
+    '<div class="reminder-header"><div class="reminder-icon">🔔</div>' +
+    '<div class="reminder-title">Hola ' + patientName + ', han pasado ' + timeLabel + ' desde tu Plan Cardioprotector</div></div>' +
+    (r.message ? '<div class="reminder-body">' + r.message + '</div>' : '') +
+    (studiesHtml ? '<div class="reminder-studies">' + studiesHtml + '</div>' : '') +
+    (actionsHtml ? '<div class="reminder-actions">' + actionsHtml + '</div>' : '') +
+    '<a class="reminder-wa-btn" href="' + waLink + '" target="_blank">💬 Contactar por WhatsApp</a>' +
+    '<button class="reminder-close" id="reminderCloseBtn">Cerrar recordatorio</button>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  document.getElementById('reminderCloseBtn').addEventListener('click', function() {
+    localStorage.setItem(dismissKey, 'true');
+    overlay.remove();
+  });
+}
+
+function showPaymentScreen() {
+  document.getElementById('tabsBar').style.display = 'none';
+  document.getElementById('appFooter').style.display = 'none';
+  var mc = document.getElementById('mainContent');
+  mc.className = '';
+  mc.innerHTML = '<div class="payment-screen">' +
+    '<img class="payment-logo" src="/logo.png" alt="Dr. Moises Aceves">' +
+    '<div class="payment-title">Plan Cardioprotector</div>' +
+    '<div class="payment-sub">Dr. Moises Aceves<br>Cardiologia clinica y rehabilitacion cardiaca</div>' +
+    '<div class="payment-card">' +
+    '<button class="payment-btn btn-pay" id="payBtn">💳 Pagar plan cardioprotector</button>' +
+    '<div class="payment-error" id="payError"></div>' +
+    '</div>' +
+    '<button class="payment-btn btn-already" id="alreadyBtn">Ya pague — ingresar codigo</button>' +
+    '</div>';
+  document.getElementById('payBtn').addEventListener('click', handlePay);
+  document.getElementById('alreadyBtn').addEventListener('click', showCodeScreen);
+}
+
+function handlePay() {
+  var btn = document.getElementById('payBtn');
+  btn.textContent = 'Procesando...';
+  btn.disabled = true;
+  fetch('/api/send-code', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({patientId: PATIENT_ID, email: 'paciente@app.com'})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function() {
+    window.open('https://paypal.me/MOISESACEVES80?locale.x=es_XC&country.x=MX', '_blank');
+    showCodeScreen();
+  })
+  .catch(function() {
+    btn.textContent = 'Pagar plan cardioprotector';
+    btn.disabled = false;
+    document.getElementById('payError').textContent = 'Error. Intenta de nuevo.';
+  });
+}
+
+function showCodeScreen() {
+  document.getElementById('mainContent').innerHTML = '<div class="payment-screen">' +
+    '<img class="payment-logo" src="/logo.png" alt="Dr. Moises Aceves">' +
+    '<div class="payment-title">Ingresa tu codigo</div>' +
+    '<div class="payment-sub">Tu medico te enviara el codigo<br>por WhatsApp al confirmar tu pago</div>' +
+    '<div class="payment-card">' +
+    '<input class="code-input" id="codeInput" type="tel" maxlength="6" placeholder="000000">' +
+    '<button class="payment-btn btn-code" id="verifyBtn">Acceder al plan</button>' +
+    '<div class="payment-error" id="codeError"></div>' +
+    '</div>' +
+    '<div class="back-link" id="backLink">Volver</div>' +
+    '</div>';
+  document.getElementById('verifyBtn').addEventListener('click', verifyCode);
+  document.getElementById('backLink').addEventListener('click', showPaymentScreen);
+}
+
+function verifyCode() {
+  var code = document.getElementById('codeInput').value.trim();
+  var err = document.getElementById('codeError');
+  if (!code || code.length < 6) { err.textContent = 'Ingresa el codigo de 6 digitos'; return; }
+  var btn = document.getElementById('verifyBtn');
+  btn.textContent = 'Verificando...';
+  btn.disabled = true;
+  fetch('/api/verify-code', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({patientId: PATIENT_ID, email: 'paciente@app.com', code: code})
+  })
+  .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+  .then(function(res) {
+    if (!res.ok) throw new Error(res.data.error);
+    localStorage.setItem(sessionKey, 'true');
+    loadPlan();
+  })
+  .catch(function() {
+    btn.textContent = 'Acceder al plan';
+    btn.disabled = false;
+    err.textContent = 'Codigo incorrecto. Verifica con tu medico.';
+  });
+}
+
+async function loadPlan() {
+  try {
+    var resp = await fetch('/api/patients/' + PATIENT_ID);
+    if (!resp.ok) throw new Error('not found');
+    var result = await resp.json();
+    DATA = result.data;
+    REMINDERS = result.reminders || [];
+    PLAN_START = result.planStart;
+    document.getElementById('topBarName').textContent = (DATA.doctor && DATA.doctor.name) || 'Dr. Moises Aceves';
+    document.getElementById('topBarSub').textContent = (DATA.doctor && DATA.doctor.esp) || 'Cardiologia clinica y rehabilitacion cardiaca';
+    document.getElementById('tabsBar').style.display = 'flex';
+    document.getElementById('appFooter').style.display = 'block';
+    renderTab(0);
+    scheduleAllAlerts();
+    setTimeout(checkReminders, 1000);
+  } catch(e) {
+    document.getElementById('mainContent').innerHTML = '<div class="error-view">Plan no encontrado.</div>';
+  }
+}
+
+if (hasAccess) {
+  loadPlan();
+} else {
+  showPaymentScreen();
+}
+</script>
+</body>
+</html>
