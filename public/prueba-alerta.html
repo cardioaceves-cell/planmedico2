@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Prueba Alerta — Dr. Aceves</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1A2D5A; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.card { background: #fff; border-radius: 24px; padding: 32px 24px; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.icon { font-size: 56px; margin-bottom: 16px; }
+.title { font-size: 22px; font-weight: 700; color: #1A2D5A; margin-bottom: 6px; }
+.sub { font-size: 14px; color: #888; margin-bottom: 28px; }
+.med-box { background: #EBF4FF; border-radius: 14px; padding: 20px; margin-bottom: 24px; }
+.med-time { font-size: 42px; font-weight: 800; color: #C0303A; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+.med-name { font-size: 18px; font-weight: 600; color: #1A2D5A; }
+.clock-box { background: #f8f8f8; border-radius: 12px; padding: 14px; margin-bottom: 20px; }
+.clock-label { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.clock-time { font-size: 32px; font-weight: 700; color: #1A2D5A; font-variant-numeric: tabular-nums; }
+.countdown { font-size: 13px; color: #C0303A; font-weight: 600; margin-top: 4px; }
+.btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; margin-bottom: 10px; }
+.btn-red { background: #C0303A; color: #fff; }
+.btn-gray { background: #f0f0f0; color: #555; font-size: 13px; }
+.status { font-size: 13px; color: #1a7a3f; font-weight: 600; margin-top: 12px; min-height: 20px; }
+.status.error { color: #C0303A; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">💊</div>
+  <div class="title">Prueba de alerta</div>
+  <div class="sub">Dr. Moisés Aceves · Cardiología</div>
+
+  <div class="med-box">
+    <div class="med-time">23:08</div>
+    <div class="med-name">Atorvastatina</div>
+  </div>
+
+  <div class="clock-box">
+    <div class="clock-label">Hora actual</div>
+    <div class="clock-time" id="clock">--:--</div>
+    <div class="countdown" id="countdown">Calculando...</div>
+  </div>
+
+  <button class="btn btn-red" onclick="activateAlert()">🔔 Activar alerta para las 23:08</button>
+  <button class="btn btn-gray" onclick="testNow()">Probar notificación ahora</button>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+var alertSet = false;
+var alertTimeout = null;
+
+function updateClock() {
+  var now = new Date();
+  var h = now.getHours().toString().padStart(2, '0');
+  var m = now.getMinutes().toString().padStart(2, '0');
+  var s = now.getSeconds().toString().padStart(2, '0');
+  document.getElementById('clock').textContent = h + ':' + m + ':' + s;
+
+  // Countdown to 23:08
+  var target = new Date();
+  target.setHours(23, 8, 0, 0);
+  var diff = target - now;
+  if (diff < 0) {
+    document.getElementById('countdown').textContent = 'Ya pasó la hora';
+  } else {
+    var hh = Math.floor(diff / 3600000);
+    var mm = Math.floor((diff % 3600000) / 60000);
+    var ss = Math.floor((diff % 60000) / 1000);
+    document.getElementById('countdown').textContent = 'Faltan ' + hh + 'h ' + mm + 'm ' + ss + 's';
+  }
+}
+
+function activateAlert() {
+  var status = document.getElementById('status');
+  if (!('Notification' in window)) {
+    status.textContent = 'Tu navegador no soporta notificaciones';
+    status.className = 'status error';
+    return;
+  }
+  Notification.requestPermission().then(function(perm) {
+    if (perm === 'granted') {
+      scheduleAlert();
+      status.textContent = '✓ Alerta activada para las 23:08';
+      status.className = 'status';
+    } else {
+      status.textContent = 'Permiso denegado. Actívalo en Ajustes de Safari.';
+      status.className = 'status error';
+    }
+  });
+}
+
+function scheduleAlert() {
+  var now = new Date();
+  var target = new Date();
+  target.setHours(23, 8, 0, 0);
+  var diff = target - now;
+  if (diff <= 0) {
+    document.getElementById('status').textContent = 'Ya pasaron las 23:08';
+    return;
+  }
+  if (alertTimeout) clearTimeout(alertTimeout);
+  alertTimeout = setTimeout(function() {
+    new Notification('💊 Medicamento — 23:08', {
+      body: 'Atorvastatina\nDr. Moisés Aceves',
+      icon: 'https://planmedico2-production.up.railway.app/logo.png',
+      badge: 'https://planmedico2-production.up.railway.app/logo.png'
+    });
+  }, diff);
+  alertSet = true;
+}
+
+function testNow() {
+  var status = document.getElementById('status');
+  if (!('Notification' in window)) {
+    status.textContent = 'Tu navegador no soporta notificaciones';
+    status.className = 'status error';
+    return;
+  }
+  if (Notification.permission !== 'granted') {
+    status.textContent = 'Primero activa la alerta arriba';
+    status.className = 'status error';
+    return;
+  }
+  new Notification('💊 Medicamento — PRUEBA', {
+    body: 'Atorvastatina\nDr. Moisés Aceves',
+    icon: 'https://planmedico2-production.up.railway.app/logo.png'
+  });
+  status.textContent = '✓ Notificación de prueba enviada';
+  status.className = 'status';
+}
+
+// Auto-schedule if permission already granted
+if ('Notification' in window && Notification.permission === 'granted') {
+  scheduleAlert();
+  document.getElementById('status').textContent = '✓ Alerta ya programada para las 23:08';
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+</script>
+</body>
+</html>
