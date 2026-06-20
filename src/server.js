@@ -113,7 +113,7 @@ app.post('/api/verify-code', async (req, res) => {
 
 app.get('/p/:id', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'patient.html')); });
 app.get('/editor', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'editor.html')); });
-
+app.get('/sarita', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'sarita-medicamentos.html')); });
 initDB().then(() => { app.listen(PORT, () => console.log('Server running on port ' + PORT)); })
   .catch(e => { console.error('DB error:', e.message); process.exit(1); });
 // v2
