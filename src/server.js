@@ -116,3 +116,4 @@ app.get('/editor', (req, res) => { res.sendFile(path.join(__dirname, '..', 'publ
 
 initDB().then(() => { app.listen(PORT, () => console.log('Server running on port ' + PORT)); })
   .catch(e => { console.error('DB error:', e.message); process.exit(1); });
+// v2
