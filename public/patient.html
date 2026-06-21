@@ -128,7 +128,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* FOOTER */
 .app-footer{background:#8B0000;padding:12px;text-align:center}
-.app-footer-text{font-size:11px;color:rgba(255,255,255,0.8);line-height:1.8}
+.app-footer-text{font-size:12px;color:#ffffff;line-height:1.8;font-weight:500}
 </style>
 </head>
 <body>
@@ -156,9 +156,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 var DATA = null;
 var REMINDERS = [];
 var PLAN_START = null;
+var VERSIONS = [];
 var PATIENT_ID = location.pathname.split('/').pop();
+var tokenKey = 'token_' + PATIENT_ID;
 var sessionKey = 'access_' + PATIENT_ID;
-var hasAccess = localStorage.getItem(sessionKey) === 'true';
+var hasAccess = false;
 var mealOptTabs = {};
 var notaOpen = {};
 var currentTab = 0;
@@ -184,7 +186,8 @@ function renderTab(i) {
   if (i === 0) mc.innerHTML = renderMedicamentos();
   if (i === 1) mc.innerHTML = renderNutricion();
   if (i === 2) mc.innerHTML = renderEjercicio();
-  if (i === 3) mc.innerHTML = renderContacto();
+  if (i === 3) mc.innerHTML = renderHistorial();
+  if (i === 4) mc.innerHTML = renderContacto();
   bindEvents();
 }
 
@@ -277,19 +280,30 @@ function showNotifBanner() {
 
 function scheduleAlert(idx) {
   if (!DATA || !DATA.meds) return;
-  var is2nd = String(idx).indexOf('_2') !== -1;
-  var realIdx = is2nd ? parseInt(String(idx).replace('_2', '')) : parseInt(idx);
+  var idxStr = String(idx);
+  var realIdx, suffix, timeStr, label;
+  if (idxStr.indexOf('_3') !== -1) {
+    realIdx = parseInt(idxStr.replace('_3', ''));
+    suffix = '3a toma';
+    timeStr = DATA.meds[realIdx] ? DATA.meds[realIdx].alert_time3 : null;
+  } else if (idxStr.indexOf('_2') !== -1) {
+    realIdx = parseInt(idxStr.replace('_2', ''));
+    suffix = '2a toma';
+    timeStr = DATA.meds[realIdx] ? DATA.meds[realIdx].alert_time2 : null;
+  } else {
+    realIdx = parseInt(idxStr);
+    suffix = null;
+    timeStr = DATA.meds[realIdx] ? DATA.meds[realIdx].alert_time : null;
+  }
   var med = DATA.meds[realIdx];
-  if (!med) return;
-  var timeStr = is2nd ? med.alert_time2 : med.alert_time;
-  if (!timeStr) return;
+  if (!med || !timeStr) return;
   var parts = timeStr.split(':');
   var now = new Date();
   var target = new Date();
   target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
   if (target <= now) target.setDate(target.getDate() + 1);
   var diff = target - now;
-  var label = is2nd ? '2a toma — ' + timeStr : timeStr;
+  label = suffix ? suffix + ' — ' + timeStr : timeStr;
   var t = setTimeout(function() {
     new Notification('Medicamento — ' + label, {
       body: med.name + (med.dose ? ' ' + med.dose : '') + '\nDr. Moises Aceves',
@@ -304,9 +318,9 @@ function scheduleAllAlerts() {
   alertTimeouts = [];
   if (!DATA || !DATA.meds) return;
   DATA.meds.forEach(function(med, idx) {
-    if (alertsState[idx] && med.alert_time && Notification.permission === 'granted') {
-      scheduleAlert(idx);
-    }
+    if (alertsState[idx] && med.alert_time && Notification.permission === 'granted') scheduleAlert(idx);
+    if (alertsState[idx + '_2'] && med.alert_time2 && Notification.permission === 'granted') scheduleAlert(idx + '_2');
+    if (alertsState[idx + '_3'] && med.alert_time3 && Notification.permission === 'granted') scheduleAlert(idx + '_3');
   });
 }
 
@@ -336,26 +350,23 @@ function renderMedicamentos() {
       html += '<div class="med-detail">' + val(m.dose) + ' · ' + val(m.freq) + '</div>';
       if (m.alert_time) html += '<div class="med-time">Recordatorio: ' + m.alert_time + '</div>';
       if (m.notes) html += '<div class="med-note">' + m.notes + '</div>';
-      if (m.alert_time) {
-        html += '<div class="med-alert">';
-        html += '<span class="alert-badge ' + (isOn ? 'alert-on' : 'alert-off') + '">' + (isOn ? 'Alerta ON' : 'Alerta OFF') + '</span>';
-        html += '</div>';
-      }
-      if (m.alert_time2) {
-        var isOn2 = alertsState[idx + '_2'] || false;
-        html += '<div class="med-time">2a toma: ' + m.alert_time2 + '</div>';
-        html += '<div class="med-alert">';
-        html += '<span class="alert-badge ' + (isOn2 ? 'alert-on' : 'alert-off') + '">' + (isOn2 ? 'Alerta 2a toma ON' : 'Alerta 2a toma OFF') + '</span>';
-        html += '</div>';
-      }
+      var times = [];
+      if (m.alert_time) times.push({key: String(idx), time: m.alert_time, label: '1a toma'});
+      if (m.alert_time2) times.push({key: idx + '_2', time: m.alert_time2, label: '2a toma'});
+      if (m.alert_time3) times.push({key: idx + '_3', time: m.alert_time3, label: '3a toma'});
+      times.forEach(function(t) {
+        var on = alertsState[t.key] || false;
+        var lbl = times.length > 1 ? t.label + ': ' + t.time : t.time;
+        html += '<div class="med-time">Recordatorio' + (times.length > 1 ? ' ' + t.label : '') + ': ' + t.time + '</div>';
+        html += '<div class="med-alert"><span class="alert-badge ' + (on ? 'alert-on' : 'alert-off') + '">' + (on ? 'Alerta ON' : 'Alerta OFF') + '</span></div>';
+      });
       html += '</div>';
-      if (m.alert_time) {
-        html += '<div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">';
-        html += '<div class="toggle ' + (isOn ? 'on' : 'off') + '" data-alert-idx="' + idx + '"><div class="toggle-knob"></div></div>';
-        if (m.alert_time2) {
-          var isOn2 = alertsState[idx + '_2'] || false;
-          html += '<div class="toggle ' + (isOn2 ? 'on' : 'off') + '" data-alert-idx="' + idx + '_2"><div class="toggle-knob"></div></div>';
-        }
+      if (times.length > 0) {
+        html += '<div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;margin-top:4px">';
+        times.forEach(function(t) {
+          var on = alertsState[t.key] || false;
+          html += '<div class="toggle ' + (on ? 'on' : 'off') + '" data-alert-idx="' + t.key + '"><div class="toggle-knob"></div></div>';
+        });
         html += '</div>';
       }
       html += '</div>';
@@ -420,6 +431,61 @@ function renderEjercicio() {
   });
   html += '</div>';
   if (ex.weeks) html += '<div class="section"><div class="section-title">Duracion</div><div class="info-box" style="border-left-color:#8B0000"><div class="info-value">Programa de ' + ex.weeks + ' semanas</div></div></div>';
+  return html;
+}
+
+function renderHistorial() {
+  if (!VERSIONS || VERSIONS.length <= 1) {
+    return '<div class="section"><div class="section-title">Historial de planes</div><div style="background:#fff;border-radius:12px;padding:24px;text-align:center;border-left:3px solid #D4A017;color:#aaa;font-size:13px">Aun no hay versiones anteriores del plan.</div></div>';
+  }
+  var html = '<div class="section"><div class="section-title">Historial de planes</div>';
+  // Skip first (current) version
+  var older = VERSIONS.slice(1);
+  older.forEach(function(v, idx) {
+    var d = v.data;
+    var fecha = new Date(v.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: 'short', year: 'numeric'});
+    html += '<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;border-left:3px solid #D4A017">';
+    html += '<div style="font-size:12px;font-weight:700;color:#8B0000;margin-bottom:10px">📋 Plan del ' + fecha + '</div>';
+    // Meds
+    if (d.meds && d.meds.length) {
+      html += '<div style="margin-bottom:8px">';
+      html += '<div style="font-size:10px;font-weight:700;color:#1A2D5A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">💊 Medicamentos</div>';
+      html += '<div style="font-size:12px;color:#444;line-height:1.7">';
+      d.meds.filter(function(m){return m.name;}).forEach(function(m) {
+        html += m.name + ' ' + (m.dose || '') + '<br>';
+      });
+      html += '</div></div>';
+    }
+    // Nutrition macros
+    if (d.nutrition) {
+      var n = d.nutrition;
+      html += '<div style="margin-bottom:8px">';
+      html += '<div style="font-size:10px;font-weight:700;color:#1A2D5A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">🥗 Nutricion</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">';
+      var macros = [['Energia', n.kcal, 'kcal'], ['Proteina', n.protein, 'g'], ['Carbohidratos', n.carbs, 'g'], ['Grasas', n.fat, 'g'], ['Fibra', n.fiber, 'g'], ['Sodio', n.sodium, 'g/dia']];
+      macros.forEach(function(m) {
+        if (m[1]) html += '<div style="background:#F8F8F8;border-radius:7px;padding:5px 8px"><div style="font-size:9px;color:#888">' + m[0] + '</div><div style="font-size:12px;font-weight:600;color:#1A2D5A">' + m[1] + ' <span style="font-size:9px;color:#aaa">' + m[2] + '</span></div></div>';
+      });
+      html += '</div></div>';
+    }
+    // Exercise summary
+    if (d.exercise && d.exercise.days && d.exercise.days.length) {
+      html += '<div style="margin-bottom:8px">';
+      html += '<div style="font-size:10px;font-weight:700;color:#1A2D5A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🫀 Entrenamiento</div>';
+      html += '<div style="font-size:12px;color:#444;line-height:1.7">';
+      d.exercise.days.forEach(function(day) {
+        html += '· ' + day.title + '<br>';
+      });
+      if (d.exercise.weeks) html += '<span style="font-size:11px;color:#aaa">Programa de ' + d.exercise.weeks + ' semanas</span>';
+      html += '</div></div>';
+    }
+    // ECG link if present
+    if (d.ecg_link) {
+      html += '<a href="' + d.ecg_link + '" target="_blank" style="display:block;background:#1A2D5A;color:#fff;border-radius:8px;padding:8px 12px;text-align:center;font-size:12px;font-weight:600;text-decoration:none;margin-top:6px">📄 Ver ECG de esta consulta</a>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
   return html;
 }
 
@@ -579,6 +645,11 @@ async function loadPlan() {
     DATA = result.data;
     REMINDERS = result.reminders || [];
     PLAN_START = result.planStart;
+    VERSIONS = result.versions || [];
+    // If plan is free, save access automatically
+    if (result.free) {
+      localStorage.setItem(sessionKey, 'true');
+    }
     document.getElementById('topBarName').textContent = (DATA.doctor && DATA.doctor.name) || 'Dr. Moises Aceves';
     document.getElementById('topBarSub').textContent = (DATA.doctor && DATA.doctor.esp) || 'Cardiologia clinica y rehabilitacion cardiaca';
     document.getElementById('tabsBar').style.display = 'flex';
@@ -591,11 +662,50 @@ async function loadPlan() {
   }
 }
 
-if (hasAccess) {
-  loadPlan();
-} else {
-  showPaymentScreen();
-}
+// First check if plan is free
+fetch('/api/patients/' + PATIENT_ID)
+  .then(function(r) { return r.json(); })
+  .then(function(result) {
+    if (result.free) {
+      // Free plan — load directly
+      DATA = result.data;
+      REMINDERS = result.reminders || [];
+      PLAN_START = result.planStart;
+      document.getElementById('tabsBar').style.display = 'flex';
+      document.getElementById('appFooter').style.display = 'block';
+      renderTab(0);
+      scheduleAllAlerts();
+      setTimeout(checkReminders, 1000);
+    } else {
+      // Paid plan — check token or session
+      var savedToken = localStorage.getItem(tokenKey);
+      if (savedToken) {
+        fetch('/api/verify-token', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({patientId: PATIENT_ID, token: savedToken})
+        })
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+        .then(function(res) {
+          if (res.ok) {
+            loadPlan();
+          } else {
+            localStorage.removeItem(tokenKey);
+            localStorage.removeItem(sessionKey);
+            showPaymentScreen();
+          }
+        })
+        .catch(function() { loadPlan(); });
+      } else if (localStorage.getItem(sessionKey) === 'true') {
+        loadPlan();
+      } else {
+        showPaymentScreen();
+      }
+    }
+  })
+  .catch(function() {
+    showPaymentScreen();
+  });
 </script>
 </body>
 </html>
