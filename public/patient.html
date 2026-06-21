@@ -112,6 +112,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .back-link{font-size:13px;color:#888;cursor:pointer;text-align:center;margin-top:8px;text-decoration:underline}
 .error-view{display:flex;align-items:center;justify-content:center;height:60vh;font-size:14px;color:#8B0000;text-align:center;padding:32px}
 
+/* WELCOME SCREEN */
+.welcome-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#fff;text-align:center}
+.welcome-logo{height:90px;width:auto;object-fit:contain;margin-bottom:20px}
+.welcome-title{font-size:13px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em}
+.welcome-name{font-size:24px;font-weight:700;color:#1A2D5A;margin-bottom:6px;line-height:1.3}
+.welcome-dx{font-size:12px;color:#aaa;margin-bottom:28px;line-height:1.5;max-width:300px}
+.welcome-card{width:100%;max-width:380px;background:#fff;border-radius:16px;padding:20px;border-left:4px solid #D4A017;box-shadow:0 4px 20px rgba(26,45,90,0.08);margin-bottom:16px}
+.welcome-btn{width:100%;padding:15px;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;background:#8B0000;color:#fff;margin-bottom:10px}
+.welcome-date{font-size:11px;color:#bbb;margin-top:8px}
+
 /* REMINDER POPUP */
 .reminder-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(26,45,90,0.6);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
 .reminder-card{background:#fff;border-radius:18px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);border-top:4px solid #8B0000}
@@ -380,6 +390,13 @@ function renderMedicamentos() {
     html += '<div class="indications-box"><div class="indications-text">' + d.indications + '</div></div>';
     html += '</div>';
   }
+  if (d.ecg_link) {
+    html += '<div class="section"><div class="section-title">Estudios</div>';
+    html += '<a href="' + d.ecg_link + '" target="_blank" style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:14px;border-left:3px solid #1A2D5A;text-decoration:none">';
+    html += '<span style="font-size:24px">📄</span>';
+    html += '<div><div style="font-size:14px;font-weight:700;color:#1A2D5A">Ver Electrocardiograma</div><div style="font-size:11px;color:#888;margin-top:2px">Toca para abrir en Google Drive</div></div>';
+    html += '</a></div>';
+  }
   return html;
 }
 
@@ -557,6 +574,34 @@ function showReminder(r, dismissKey) {
   });
 }
 
+function showWelcomeScreen() {
+  document.getElementById('tabsBar').style.display = 'none';
+  document.getElementById('appFooter').style.display = 'none';
+  var mc = document.getElementById('mainContent');
+  mc.className = '';
+  var patientName = DATA && DATA.patient && DATA.patient.name ? DATA.patient.name : 'Paciente';
+  var patientDx = DATA && DATA.patient && DATA.patient.dx ? DATA.patient.dx : '';
+  var planDate = PLAN_START ? new Date(PLAN_START).toLocaleDateString('es-MX', {day:'2-digit', month:'long', year:'numeric'}) : '';
+  mc.innerHTML = '<div class="welcome-screen">' +
+    '<img class="welcome-logo" src="/logo.png" alt="Dr. Moises Aceves">' +
+    '<div class="welcome-title">Plan Médico Personalizado</div>' +
+    '<div class="welcome-name">' + patientName + '</div>' +
+    '<div class="welcome-dx">' + patientDx + '</div>' +
+    '<div class="welcome-card">' +
+    '<div style="font-size:11px;color:#888;margin-bottom:4px">Tu médico</div>' +
+    '<div style="font-size:15px;font-weight:700;color:#1A2D5A">Dr. Moisés Aceves</div>' +
+    '<div style="font-size:12px;color:#aaa">Cardiología clínica y rehabilitación cardiaca</div>' +
+    (planDate ? '<div class="welcome-date">Plan desde ' + planDate + '</div>' : '') +
+    '</div>' +
+    '<button class="welcome-btn" id="enterPlanBtn">❤️ Ver mi plan</button>' +
+    '</div>';
+  document.getElementById('enterPlanBtn').addEventListener('click', function() {
+    document.getElementById('tabsBar').style.display = 'flex';
+    document.getElementById('appFooter').style.display = 'block';
+    renderTab(0);
+  });
+}
+
 function showPaymentScreen() {
   document.getElementById('tabsBar').style.display = 'none';
   document.getElementById('appFooter').style.display = 'none';
@@ -653,11 +698,9 @@ async function loadPlan() {
     }
     document.getElementById('topBarName').textContent = (DATA.doctor && DATA.doctor.name) || 'Dr. Moises Aceves';
     document.getElementById('topBarSub').textContent = (DATA.doctor && DATA.doctor.esp) || 'Cardiologia clinica y rehabilitacion cardiaca';
-    document.getElementById('tabsBar').style.display = 'flex';
-    document.getElementById('appFooter').style.display = 'block';
-    renderTab(0);
     scheduleAllAlerts();
     setTimeout(checkReminders, 1000);
+    showWelcomeScreen();
   } catch(e) {
     document.getElementById('mainContent').innerHTML = '<div class="error-view">Plan no encontrado.</div>';
   }
@@ -672,11 +715,10 @@ fetch('/api/patients/' + PATIENT_ID)
       DATA = result.data;
       REMINDERS = result.reminders || [];
       PLAN_START = result.planStart;
-      document.getElementById('tabsBar').style.display = 'flex';
-      document.getElementById('appFooter').style.display = 'block';
-      renderTab(0);
+      VERSIONS = result.versions || [];
       scheduleAllAlerts();
       setTimeout(checkReminders, 1000);
+      showWelcomeScreen();
     } else {
       // Paid plan — check token or session
       var savedToken = localStorage.getItem(tokenKey);
