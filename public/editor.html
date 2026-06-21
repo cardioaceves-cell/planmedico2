@@ -6,70 +6,80 @@
 <title>Editor — Dr. Moises Aceves</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a1a;min-height:100vh}
-.header{background:#fff;border-bottom:1px solid #e8e8e8;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
-.logo{height:40px;width:auto;object-fit:contain}
-.header-name{font-size:14px;font-weight:600;color:#1a1a1a}
-.header-sub{font-size:11px;color:#888}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F5F5;color:#1A2D5A;min-height:100vh}
+.header{background:#8B0000;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.logo{height:46px;width:auto;object-fit:contain;border-radius:6px}
+.header-name{font-size:15px;font-weight:700;color:#fff}
+.header-sub{font-size:11px;color:rgba(255,255,255,0.65);margin-top:2px}
 .container{max-width:600px;margin:0 auto;padding:16px}
-.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:16px;border:1px solid #e8e8e8}
-.card-title{font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px}
-.field-input{width:100%;font-size:14px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;color:#1a1a1a;font-family:inherit;outline:none}
-.field-input:focus{border-color:#1a6cb0;background:#fff}
-.import-area{width:100%;min-height:140px;font-size:12px;padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fafafa;color:#1a1a1a;font-family:monospace;outline:none;resize:vertical;line-height:1.5}
-.import-area:focus{border-color:#1a6cb0;background:#fff}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:16px;border-left:4px solid #D4A017;box-shadow:0 2px 8px rgba(26,45,90,0.06)}
+.card-title{font-size:11px;font-weight:700;color:#8B0000;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title::after{content:'';flex:1;height:1px;background:#D4A017;opacity:0.4}
+.field-input{width:100%;font-size:14px;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;background:#fafafa;color:#1A2D5A;font-family:inherit;outline:none}
+.field-input:focus{border-color:#8B0000;background:#fff}
+.import-area{width:100%;min-height:140px;font-size:12px;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:10px;background:#fafafa;color:#1A2D5A;font-family:monospace;outline:none;resize:vertical;line-height:1.5}
+.import-area:focus{border-color:#8B0000;background:#fff}
 .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
-.btn-blue{background:#1a6cb0;color:#fff}
-.btn-gray{background:#f0f2f5;color:#555;border:1px solid #ddd}
-.error{color:#c0392b;font-size:13px;margin-top:8px;text-align:center}
+.btn-blue{background:#8B0000;color:#fff}
+.btn-gray{background:#f0f0f0;color:#555;border:1px solid #ddd}
+.error{color:#8B0000;font-size:13px;margin-top:8px;text-align:center}
 .hint{font-size:12px;color:#aaa;margin-top:10px;line-height:1.6;text-align:center}
-.patient-item{background:#f8f9fb;border-radius:10px;padding:12px 14px;border:1px solid #eee;display:flex;align-items:center;gap:12px;margin-bottom:8px}
-.patient-avatar{width:38px;height:38px;border-radius:50%;background:#1a6cb0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;flex-shrink:0}
+.patient-item{background:#fff;border-radius:12px;padding:12px 14px;border-left:3px solid #D4A017;display:flex;align-items:center;gap:12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(26,45,90,0.07)}
+.patient-avatar{width:38px;height:38px;border-radius:50%;background:#8B0000;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0}
 .patient-info{flex:1;min-width:0}
-.patient-name{font-size:14px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.patient-name{font-size:14px;font-weight:600;color:#1A2D5A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .patient-dx{font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .patient-date{font-size:10px;color:#bbb;margin-top:2px}
 .patient-actions{display:flex;gap:8px;flex-shrink:0}
-.btn-icon{padding:6px 10px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-family:inherit;font-weight:500}
-.btn-share{background:#EBF4FF;color:#1a6cb0}
-.btn-del{background:#ffeaea;color:#c0392b}
+.btn-icon{padding:6px 12px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-family:inherit;font-weight:600}
+.btn-share{background:#FFF3D0;color:#A07800;border:1px solid #D4A017}
+.btn-del{background:#FDF0F0;color:#8B0000;border:1px solid #8B0000}
 .empty{text-align:center;color:#bbb;padding:32px;font-size:13px}
-.success-box{background:#E6F7EE;border-radius:10px;padding:14px;margin-top:12px;display:none}
+.success-box{background:#F0FFF4;border-radius:10px;padding:14px;margin-top:12px;display:none;border:1.5px solid #1a7a3f}
 .success-box.show{display:block}
-.success-label{font-size:12px;color:#1a7a3f;font-weight:600;margin-bottom:6px}
+.success-label{font-size:12px;color:#1a7a3f;font-weight:700;margin-bottom:6px}
 .link-row{display:flex;gap:8px;align-items:center}
-.link-text{flex:1;font-size:13px;color:#1a4f8a;background:#d6f0e0;padding:8px 10px;border-radius:8px;word-break:break-all;border:none;font-family:monospace}
-.btn-copy{padding:8px 14px;background:#1a7a3f;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 22px;border-radius:22px;font-size:13px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:100;white-space:nowrap}
+.link-text{flex:1;font-size:12px;color:#1A2D5A;background:#F0F4FF;padding:8px 10px;border-radius:8px;word-break:break-all;border:1px solid #D4A017;font-family:monospace}
+.btn-copy{padding:8px 14px;background:#1A2D5A;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A2D5A;color:#fff;padding:10px 22px;border-radius:22px;font-size:13px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:100;white-space:nowrap}
 .toast.show{opacity:1}
 .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
-.tab-btn{flex:1;min-width:80px;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;text-align:center}
-.tab-btn.active{background:#1a6cb0;color:#fff}
-.tab-btn:not(.active){background:#f0f2f5;color:#555}
-.code-item{background:#f8f9fb;border-radius:10px;padding:12px 14px;border:1px solid #eee;margin-bottom:8px}
-.code-badge{font-size:24px;font-weight:700;letter-spacing:4px;color:#1a4f8a;background:#EBF4FF;padding:6px 12px;border-radius:8px;display:inline-block;margin-bottom:8px}
-.reminder-section{background:#f8f8f8;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #eee}
-.reminder-section-title{font-size:11px;font-weight:600;color:#1a6cb0;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em}
+.tab-btn{flex:1;min-width:80px;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;text-align:center;transition:all 0.2s}
+.tab-btn.active{background:#8B0000;color:#fff;font-weight:700}
+.tab-btn:not(.active){background:#fff;color:#1A2D5A;border:1.5px solid #e0e0e0}
+.code-item{background:#fff;border-radius:12px;padding:14px;border-left:3px solid #D4A017;margin-bottom:8px;box-shadow:0 1px 4px rgba(26,45,90,0.07)}
+.code-badge{font-size:26px;font-weight:700;letter-spacing:5px;color:#8B0000;background:#FDF0F0;padding:8px 14px;border-radius:8px;display:inline-block;margin-bottom:8px;border:1px solid #8B0000}
+.reminder-section{background:#FAFAFA;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #eee}
+.reminder-section-title{font-size:11px;font-weight:700;color:#8B0000;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.08em}
 .study-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .study-check{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#444;cursor:pointer;padding:4px;line-height:1.4}
-.study-check input{width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:1px}
+.study-check input{width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:1px;accent-color:#8B0000}
 .timing-btns{display:flex;gap:6px;flex-wrap:wrap}
-.timing-btn{padding:7px 14px;border-radius:20px;border:1px solid #ddd;font-size:12px;cursor:pointer;font-family:inherit;background:#fff;color:#555}
-.timing-btn.active{background:#1a6cb0;color:#fff;border-color:#1a6cb0}
-.action-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#444;cursor:pointer;padding:4px 0}
-.action-check input{width:16px;height:16px;cursor:pointer}
-.preset-msg{width:100%;text-align:left;padding:8px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:12px;color:#444;cursor:pointer;font-family:inherit;margin-bottom:6px;line-height:1.4}
-.preset-msg:hover{background:#EBF4FF;border-color:#b3d4f5}
-.add-reminder-btn{width:100%;padding:12px;background:#1a6cb0;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
-.saved-msg{color:#1a7a3f;font-size:13px;text-align:center;margin-top:8px;display:none}
+.timing-btn{padding:7px 14px;border-radius:20px;border:1.5px solid #e0e0e0;font-size:12px;cursor:pointer;font-family:inherit;background:#fff;color:#1A2D5A;font-weight:500}
+.timing-btn.active{background:#8B0000;color:#fff;border-color:#8B0000}
+.action-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#444;cursor:pointer;padding:5px 0}
+.action-check input{width:16px;height:16px;cursor:pointer;accent-color:#8B0000}
+.preset-msg{width:100%;text-align:left;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;background:#fff;font-size:12px;color:#1A2D5A;cursor:pointer;font-family:inherit;margin-bottom:6px;line-height:1.4}
+.preset-msg:hover{background:#FFF3D0;border-color:#D4A017}
+.add-reminder-btn{width:100%;padding:12px;background:#8B0000;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
+.saved-msg{color:#1a7a3f;font-size:13px;text-align:center;margin-top:8px;display:none;font-weight:600}
+.access-toggle{background:#FAFAFA;border-radius:10px;padding:12px 14px;margin:10px 0;border:1.5px solid #e0e0e0}
+.access-label{font-size:11px;font-weight:700;color:#1A2D5A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px}
+.access-options{display:flex;gap:10px;margin-bottom:8px}
+.access-opt{display:flex;align-items:center;gap:6px;cursor:pointer}
+.access-opt input{cursor:pointer;accent-color:#8B0000}
+.access-tag{font-size:13px;font-weight:600;padding:5px 12px;border-radius:20px;cursor:pointer}
+.access-tag.paid{background:#FDF0F0;color:#8B0000;border:1.5px solid #8B0000}
+.access-tag.free{background:#E6F7EE;color:#1a7a3f;border:1.5px solid #1a7a3f}
+.access-desc{font-size:11px;color:#888;line-height:1.5}
 </style>
 </head>
 <body>
 <div class="header">
   <img class="logo" src="/logo.png" alt="Dr. Moises Aceves">
   <div>
-    <div class="header-name">Dr. Moises Aceves</div>
-    <div class="header-sub">Panel medico</div>
+    <div class="header-name">Dr. Moisés Aceves</div>
+    <div class="header-sub">Panel médico · Cardiología</div>
   </div>
 </div>
 
@@ -86,6 +96,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="card-title">Cargar plan del paciente</div>
       <textarea class="import-area" id="jsonArea" placeholder="Pega aqui el JSON generado por Claude..."></textarea>
       <div class="error" id="jsonError"></div>
+      <div class="access-toggle">
+        <div class="access-label">Tipo de acceso:</div>
+        <div class="access-options">
+          <label class="access-opt">
+            <input type="radio" name="accessType" value="paid" checked>
+            <span class="access-tag paid">💳 Con pago</span>
+          </label>
+          <label class="access-opt">
+            <input type="radio" name="accessType" value="free">
+            <span class="access-tag free">🆓 Gratuito</span>
+          </label>
+        </div>
+        <div class="access-desc" id="accessDesc">El paciente debe pagar por PayPal e ingresar un código de acceso.</div>
+      </div>
       <button class="btn btn-blue" id="saveBtn">Guardar y generar link</button>
       <div class="hint">Dile a Claude: Genera el JSON para la app con el plan de [nombre]</div>
       <div class="success-box" id="successBox">
@@ -194,6 +218,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <div class="toast" id="toast"></div>
+<div style="background:#1A2D5A;padding:14px;text-align:center;margin-top:8px">
+  <div style="font-size:12px;color:#ffffff;font-weight:500">Dr. Moisés Aceves · Cardiología clínica y rehabilitación cardiaca</div>
+</div>
 
 <script>
 var currentLink = '';
@@ -215,6 +242,17 @@ document.querySelectorAll('.tab-btn').forEach(function(btn) {
 });
 
 // Save patient
+document.querySelectorAll('input[name="accessType"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    var desc = document.getElementById('accessDesc');
+    if (this.value === 'free') {
+      desc.textContent = 'El paciente accede directamente al plan sin necesidad de pagar ni ingresar código.';
+    } else {
+      desc.textContent = 'El paciente debe pagar por PayPal e ingresar un código de acceso.';
+    }
+  });
+});
+
 document.getElementById('saveBtn').addEventListener('click', function() {
   var raw = document.getElementById('jsonArea').value.trim();
   var err = document.getElementById('jsonError');
@@ -226,7 +264,7 @@ document.getElementById('saveBtn').addEventListener('click', function() {
   fetch('/api/patients', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({data: parsed})
+    body: JSON.stringify({data: parsed, free: document.querySelector('input[name="accessType"]:checked').value === 'free'})
   })
   .then(function(r) { return r.json(); })
   .then(function(result) {
@@ -268,6 +306,7 @@ function loadPatients() {
       html += '<div class="patient-date">' + date + '</div></div>';
       html += '<div class="patient-actions">';
       html += '<button class="btn-icon btn-share" data-id="' + p.id + '">Link</button>';
+      html += '<button class="btn-icon btn-ecg" data-id="' + p.id + '" style="background:#F0F4FF;color:#1A2D5A;border:1px solid #1A2D5A">ECG</button>';
       html += '<button class="btn-icon btn-del" data-id="' + p.id + '">Borrar</button>';
       html += '</div></div>';
     });
@@ -278,6 +317,20 @@ function loadPatients() {
         navigator.clipboard.writeText(url).then(function() { showToast('Link copiado'); });
       });
     });
+    list.querySelectorAll('.btn-ecg').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = this.getAttribute('data-id');
+        var link = prompt('Pega el link de Google Drive del ECG:');
+        if (!link || !link.trim()) return;
+        fetch('/api/patients/' + id + '/ecg', {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ecg_link: link.trim()})
+        }).then(function() { showToast('ECG guardado ✓'); loadPatients(); })
+        .catch(function() { showToast('Error al guardar ECG'); });
+      });
+    });
+
     list.querySelectorAll('.btn-del').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var id = this.getAttribute('data-id');
