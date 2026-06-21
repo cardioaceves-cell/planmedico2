@@ -10,7 +10,15 @@ const db = new Client({connectionString: process.env.DATABASE_URL, ssl: {rejectU
 async function initDB() {
   await db.connect();
   await db.query(`CREATE TABLE IF NOT EXISTS patients (
-    id VARCHAR(20) PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW()
+    id VARCHAR(20) PRIMARY KEY, data JSONB NOT NULL, free BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW()
+  )`);
+  // Add free column if it doesn't exist (for existing databases)
+  await db.query(`ALTER TABLE patients ADD COLUMN IF NOT EXISTS free BOOLEAN DEFAULT FALSE`);
+  await db.query(`CREATE TABLE IF NOT EXISTS patient_tokens (
+    id SERIAL PRIMARY KEY,
+    patient_id VARCHAR(20) REFERENCES patients(id) ON DELETE CASCADE,
+    token VARCHAR(64) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
   )`);
   await db.query(`CREATE TABLE IF NOT EXISTS access_codes (
     id SERIAL PRIMARY KEY, patient_id VARCHAR(20) NOT NULL,
@@ -21,6 +29,12 @@ async function initDB() {
     id SERIAL PRIMARY KEY, patient_id VARCHAR(20) NOT NULL,
     reminder JSONB NOT NULL, created_at TIMESTAMP DEFAULT NOW()
   )`);
+  await db.query(`CREATE TABLE IF NOT EXISTS patient_versions (
+    id SERIAL PRIMARY KEY,
+    patient_id VARCHAR(20) NOT NULL,
+    data JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
   console.log('DB ready');
 }
 
@@ -29,34 +43,78 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.post('/api/patients', async (req, res) => {
   try {
-    const {data} = req.body;
+    const {data, free} = req.body;
     if (!data) return res.status(400).json({error: 'No data'});
     const id = nanoid(8);
-    await db.query('INSERT INTO patients (id, data) VALUES ($1, $2)', [id, data]);
-    res.json({id, url: '/p/' + id});
+    await db.query('INSERT INTO patients (id, data, free) VALUES ($1, $2, $3)', [id, data, free || false]);
+    await db.query('INSERT INTO patient_versions (patient_id, data) VALUES ($1, $2)', [id, data]);
+    res.json({id, url: '/p/' + id, free: free || false});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
 app.get('/api/patients/:id', async (req, res) => {
-app.get('/sarita', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'sarita-medicamentos.html')); });
-app.get('/prueba', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'prueba-alerta.html')); }); 
   try {
     const r = await db.query('SELECT * FROM patients WHERE id = $1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({error: 'No encontrado'});
     const rem = await db.query('SELECT reminder FROM reminders WHERE patient_id = $1 ORDER BY created_at ASC', [req.params.id]);
-    res.json({id: r.rows[0].id, data: r.rows[0].data, reminders: rem.rows.map(r => r.reminder), planStart: r.rows[0].created_at});
+    const vers = await db.query('SELECT id, data, created_at FROM patient_versions WHERE patient_id = $1 ORDER BY created_at DESC LIMIT 10', [req.params.id]);
+    res.json({id: r.rows[0].id, data: r.rows[0].data, free: r.rows[0].free || false, reminders: rem.rows.map(r => r.reminder), planStart: r.rows[0].created_at, versions: vers.rows});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
 app.get('/api/patients', async (req, res) => {
   try {
-    const r = await db.query('SELECT id, data, created_at FROM patients ORDER BY created_at DESC');
+    const r = await db.query('SELECT id, data, free, created_at FROM patients ORDER BY created_at DESC');
     res.json(r.rows.map(row => ({
       id: row.id,
       name: row.data && row.data.patient ? row.data.patient.name : 'Sin nombre',
       dx: row.data && row.data.patient ? row.data.patient.dx : '',
+      free: row.free || false,
       createdAt: row.created_at
     })));
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.put('/api/patients/:id', async (req, res) => {
+  try {
+    const {data, free} = req.body;
+    // Save current version before updating
+    const cur = await db.query('SELECT data FROM patients WHERE id = $1', [req.params.id]);
+    if (cur.rows.length) {
+      await db.query('INSERT INTO patient_versions (patient_id, data) VALUES ($1, $2)', [req.params.id, cur.rows[0].data]);
+    }
+    await db.query('UPDATE patients SET data = $1, free = $2 WHERE id = $3', [data, free || false, req.params.id]);
+    res.json({ok: true});
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.get('/api/patients/:id/versions', async (req, res) => {
+  try {
+    const r = await db.query('SELECT id, data, created_at FROM patient_versions WHERE patient_id = $1 ORDER BY created_at DESC LIMIT 10', [req.params.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.patch('/api/patients/:id/free', async (req, res) => {
+  try {
+    const {free} = req.body;
+    await db.query('UPDATE patients SET free = $1 WHERE id = $2', [free, req.params.id]);
+    res.json({ok: true, free});
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.patch('/api/patients/:id/ecg', async (req, res) => {
+  try {
+    const {ecg_link} = req.body;
+    // Save ECG link into the latest version's data
+    const r = await db.query('SELECT data FROM patients WHERE id = $1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({error: 'No encontrado'});
+    const data = r.rows[0].data;
+    data.ecg_link = ecg_link;
+    await db.query('UPDATE patients SET data = $1 WHERE id = $2', [data, req.params.id]);
+    // Also update latest version
+    await db.query('UPDATE patient_versions SET data = $1 WHERE id = (SELECT id FROM patient_versions WHERE patient_id = $2 ORDER BY created_at DESC LIMIT 1)', [data, req.params.id]);
+    res.json({ok: true});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
@@ -103,18 +161,30 @@ app.post('/api/verify-code', async (req, res) => {
   try {
     const {patientId, email, code} = req.body;
     const r = await db.query(
-      'SELECT * FROM access_codes WHERE patient_id = $1 AND email = $2 AND code = $3 AND used = FALSE ORDER BY created_at DESC LIMIT 1',
-      [patientId, email.toLowerCase(), code]
+      'SELECT * FROM access_codes WHERE patient_id = $1 AND code = $2 AND used = FALSE ORDER BY created_at DESC LIMIT 1',
+      [patientId, code]
     );
     if (!r.rows.length) return res.status(401).json({error: 'Codigo incorrecto'});
     await db.query('UPDATE access_codes SET used = TRUE WHERE id = $1', [r.rows[0].id]);
+    const {nanoid} = await import('nanoid');
+    const token = nanoid(48);
+    await db.query('INSERT INTO patient_tokens (patient_id, token) VALUES ($1, $2)', [patientId, token]);
+    res.json({ok: true, token});
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.post('/api/verify-token', async (req, res) => {
+  try {
+    const {patientId, token} = req.body;
+    if (!token) return res.status(401).json({error: 'Sin token'});
+    const r = await db.query('SELECT * FROM patient_tokens WHERE patient_id = $1 AND token = $2', [patientId, token]);
+    if (!r.rows.length) return res.status(401).json({error: 'Token invalido'});
     res.json({ok: true});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
 app.get('/p/:id', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'patient.html')); });
 app.get('/editor', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'editor.html')); });
-app.get('/sarita', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'sarita-medicamentos.html')); });
+
 initDB().then(() => { app.listen(PORT, () => console.log('Server running on port ' + PORT)); })
   .catch(e => { console.error('DB error:', e.message); process.exit(1); });
-// v2
