@@ -7,6 +7,45 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const db = new Client({connectionString: process.env.DATABASE_URL, ssl: {rejectUnauthorized: false}});
 
+// Garantiza que todo plan tenga estructura completa antes de guardarse,
+// para que el frontend nunca reciba campos undefined.
+function normalizePlan(input) {
+  let data = input;
+  if (typeof data === 'string') { try { data = JSON.parse(data); } catch(e) { data = {}; } }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+
+  data.patient = (data.patient && typeof data.patient === 'object') ? data.patient : {};
+  ['name','age','weight','height','dx'].forEach(function(k){ if (data.patient[k] == null) data.patient[k] = ''; });
+
+  data.meds = Array.isArray(data.meds)
+    ? data.meds.filter(function(m){ return m && typeof m === 'object'; })
+    : [];
+
+  data.indications = typeof data.indications === 'string' ? data.indications : '';
+
+  var n = (data.nutrition && typeof data.nutrition === 'object') ? data.nutrition : {};
+  ['kcal','protein','carbs','fat','fiber','sodium','liquids','goals'].forEach(function(k){ if (n[k] == null) n[k] = ''; });
+  var meals = (n.meals && typeof n.meals === 'object') ? n.meals : {};
+  ['desayuno','colacion_m','comida','colacion_v','cena'].forEach(function(k){ if (!Array.isArray(meals[k])) meals[k] = []; });
+  n.meals = meals;
+  data.nutrition = n;
+
+  var ex = (data.exercise && typeof data.exercise === 'object') ? data.exercise : {};
+  ex.days = Array.isArray(ex.days)
+    ? ex.days.filter(function(d){ return d && typeof d === 'object'; }).map(function(d){
+        return {
+          title: d.title || '',
+          type: d.type || 'cardio',
+          exercises: Array.isArray(d.exercises) ? d.exercises : []
+        };
+      })
+    : [];
+  if (ex.weeks == null) ex.weeks = '';
+  data.exercise = ex;
+
+  return data;
+}
+
 async function initDB() {
   await db.connect();
   await db.query(`CREATE TABLE IF NOT EXISTS patients (
@@ -43,8 +82,9 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.post('/api/patients', async (req, res) => {
   try {
-    const {data, free} = req.body;
-    if (!data) return res.status(400).json({error: 'No data'});
+    if (!req.body || !req.body.data) return res.status(400).json({error: 'No data'});
+    const {free} = req.body;
+    const data = normalizePlan(req.body.data);
     const id = nanoid(8);
     await db.query('INSERT INTO patients (id, data, free) VALUES ($1, $2, $3)', [id, data, free || false]);
     await db.query('INSERT INTO patient_versions (patient_id, data) VALUES ($1, $2)', [id, data]);
@@ -77,7 +117,8 @@ app.get('/api/patients', async (req, res) => {
 
 app.put('/api/patients/:id', async (req, res) => {
   try {
-    const {data, free} = req.body;
+    const {free} = req.body;
+    const data = normalizePlan(req.body && req.body.data);
     // Save current version before updating
     const cur = await db.query('SELECT data FROM patients WHERE id = $1', [req.params.id]);
     if (cur.rows.length) {
@@ -109,7 +150,7 @@ app.patch('/api/patients/:id/ecg', async (req, res) => {
     // Save ECG link into the latest version's data
     const r = await db.query('SELECT data FROM patients WHERE id = $1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({error: 'No encontrado'});
-    const data = r.rows[0].data;
+    const data = normalizePlan(r.rows[0].data);
     data.ecg_link = ecg_link;
     await db.query('UPDATE patients SET data = $1 WHERE id = $2', [data, req.params.id]);
     // Also update latest version
@@ -185,6 +226,7 @@ app.post('/api/verify-token', async (req, res) => {
 
 app.get('/p/:id', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'patient.html')); });
 app.get('/editor', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'editor.html')); });
+app.get('/sarita', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'sarita-medicamentos.html')); });
 
 initDB().then(() => { app.listen(PORT, () => console.log('Server running on port ' + PORT)); })
   .catch(e => { console.error('DB error:', e.message); process.exit(1); });

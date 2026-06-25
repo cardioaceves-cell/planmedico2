@@ -335,7 +335,26 @@ function scheduleAllAlerts() {
   });
 }
 
-function val(v) { return v || '-'; }
+function val(v) { return (v === 0 || v) ? v : '-'; }
+
+// Asegura estructura completa para que ningun render acceda a undefined.
+function normalizePlan(input) {
+  var data = input;
+  if (typeof data === 'string') { try { data = JSON.parse(data); } catch(e) { data = {}; } }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+  data.patient = (data.patient && typeof data.patient === 'object') ? data.patient : {};
+  data.meds = Array.isArray(data.meds) ? data.meds.filter(function(m){ return m && typeof m === 'object'; }) : [];
+  data.indications = typeof data.indications === 'string' ? data.indications : '';
+  var n = (data.nutrition && typeof data.nutrition === 'object') ? data.nutrition : {};
+  var meals = (n.meals && typeof n.meals === 'object') ? n.meals : {};
+  ['desayuno','colacion_m','comida','colacion_v','cena'].forEach(function(k){ if (!Array.isArray(meals[k])) meals[k] = []; });
+  n.meals = meals;
+  data.nutrition = n;
+  var ex = (data.exercise && typeof data.exercise === 'object') ? data.exercise : {};
+  ex.days = Array.isArray(ex.days) ? ex.days.filter(function(d){ return d && typeof d === 'object'; }) : [];
+  data.exercise = ex;
+  return data;
+}
 
 function renderMedicamentos() {
   var d = DATA || {};
@@ -402,7 +421,7 @@ function renderMedicamentos() {
 }
 
 function renderNutricion() {
-  var n = DATA.nutrition || {};
+  var n = (DATA && DATA.nutrition) || {};
   var keys = ['desayuno', 'colacion_m', 'comida', 'colacion_v', 'cena'];
   var labels = {desayuno: 'Desayuno', colacion_m: 'Colacion matutina', comida: 'Comida', colacion_v: 'Colacion vespertina', cena: 'Cena'};
   var html = '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">';
@@ -429,7 +448,7 @@ function renderNutricion() {
 }
 
 function renderEjercicio() {
-  var ex = DATA.exercise || {};
+  var ex = (DATA && DATA.exercise) || {};
   var html = '<div class="section"><div class="section-title">Programa semanal</div>';
   (ex.days || []).forEach(function(day, di) {
     day = day || {};
@@ -462,8 +481,8 @@ function renderHistorial() {
   // Skip first (current) version
   var older = VERSIONS.slice(1);
   older.forEach(function(v, idx) {
-    var d = v.data;
-    var fecha = new Date(v.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: 'short', year: 'numeric'});
+    var d = normalizePlan(v && v.data);
+    var fecha = new Date(v && v.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: 'short', year: 'numeric'});
     html += '<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;border-left:3px solid #D4A017">';
     html += '<div style="font-size:12px;font-weight:700;color:#8B0000;margin-bottom:10px">📋 Plan del ' + fecha + '</div>';
     // Meds
@@ -471,7 +490,7 @@ function renderHistorial() {
       html += '<div style="margin-bottom:8px">';
       html += '<div style="font-size:10px;font-weight:700;color:#1A2D5A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">💊 Medicamentos</div>';
       html += '<div style="font-size:12px;color:#444;line-height:1.7">';
-      d.meds.filter(function(m){return m.name;}).forEach(function(m) {
+      d.meds.filter(function(m){return m && m.name;}).forEach(function(m) {
         html += m.name + ' ' + (m.dose || '') + '<br>';
       });
       html += '</div></div>';
@@ -494,7 +513,7 @@ function renderHistorial() {
       html += '<div style="font-size:10px;font-weight:700;color:#1A2D5A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🫀 Entrenamiento</div>';
       html += '<div style="font-size:12px;color:#444;line-height:1.7">';
       d.exercise.days.forEach(function(day) {
-        html += '· ' + day.title + '<br>';
+        html += '· ' + ((day && day.title) || '') + '<br>';
       });
       if (d.exercise.weeks) html += '<span style="font-size:11px;color:#aaa">Programa de ' + d.exercise.weeks + ' semanas</span>';
       html += '</div></div>';
@@ -690,7 +709,7 @@ async function loadPlan() {
     var resp = await fetch('/api/patients/' + PATIENT_ID);
     if (!resp.ok) throw new Error('not found');
     var result = await resp.json();
-    DATA = result.data;
+    DATA = normalizePlan(result.data);
     REMINDERS = result.reminders || [];
     PLAN_START = result.planStart;
     VERSIONS = result.versions || [];
@@ -714,7 +733,7 @@ fetch('/api/patients/' + PATIENT_ID)
   .then(function(result) {
     if (result.free) {
       // Free plan — load directly
-      DATA = result.data;
+      DATA = normalizePlan(result.data);
       REMINDERS = result.reminders || [];
       PLAN_START = result.planStart;
       VERSIONS = result.versions || [];
