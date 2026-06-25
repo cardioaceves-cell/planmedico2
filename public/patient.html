@@ -338,19 +338,20 @@ function scheduleAllAlerts() {
 function val(v) { return v || '-'; }
 
 function renderMedicamentos() {
-  var d = DATA;
+  var d = DATA || {};
+  var p = d.patient || {};
   var html = '';
   html += '<div class="section"><div class="section-title">Paciente</div>';
   html += '<div class="info-grid">';
-  html += '<div class="info-box"><div class="info-label">Nombre</div><div class="info-value">' + val(d.patient.name) + '</div></div>';
-  html += '<div class="info-box"><div class="info-label">Edad</div><div class="info-value">' + val(d.patient.age) + '</div></div>';
-  html += '<div class="info-box"><div class="info-label">Peso</div><div class="info-value">' + val(d.patient.weight) + '</div></div>';
-  html += '<div class="info-box"><div class="info-label">Talla</div><div class="info-value">' + val(d.patient.height) + '</div></div>';
+  html += '<div class="info-box"><div class="info-label">Nombre</div><div class="info-value">' + val(p.name) + '</div></div>';
+  html += '<div class="info-box"><div class="info-label">Edad</div><div class="info-value">' + val(p.age) + '</div></div>';
+  html += '<div class="info-box"><div class="info-label">Peso</div><div class="info-value">' + val(p.weight) + '</div></div>';
+  html += '<div class="info-box"><div class="info-label">Talla</div><div class="info-value">' + val(p.height) + '</div></div>';
   html += '</div>';
-  html += '<div class="info-full"><div class="info-label">Diagnostico</div><div class="info-value">' + val(d.patient.dx) + '</div></div>';
+  html += '<div class="info-full"><div class="info-label">Diagnostico</div><div class="info-value">' + val(p.dx) + '</div></div>';
   html += '</div>';
 
-  var meds = d.meds.filter(function(m) { return m.name; });
+  var meds = (d.meds || []).filter(function(m) { return m && m.name; });
   if (meds.length) {
     html += '<div class="section"><div class="section-title">Medicamentos</div>';
     meds.forEach(function(m, idx) {
@@ -401,7 +402,7 @@ function renderMedicamentos() {
 }
 
 function renderNutricion() {
-  var n = DATA.nutrition;
+  var n = DATA.nutrition || {};
   var keys = ['desayuno', 'colacion_m', 'comida', 'colacion_v', 'cena'];
   var labels = {desayuno: 'Desayuno', colacion_m: 'Colacion matutina', comida: 'Comida', colacion_v: 'Colacion vespertina', cena: 'Cena'};
   var html = '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">';
@@ -411,7 +412,7 @@ function renderNutricion() {
   html += '</div><div class="stat-box" style="margin-bottom:0"><div class="stat-label">Liquidos</div><div class="stat-val">' + (n.liquids || '-') + ' <span class="stat-unit">L/dia</span></div></div></div>';
   html += '<div class="section"><div class="section-title">Plan de alimentacion</div>';
   keys.forEach(function(key) {
-    var opts = n.meals[key];
+    var opts = (n.meals && n.meals[key]) || [];
     if (!mealOptTabs[key]) mealOptTabs[key] = 0;
     var cur = mealOptTabs[key];
     var tabBtns = '';
@@ -428,11 +429,12 @@ function renderNutricion() {
 }
 
 function renderEjercicio() {
-  var ex = DATA.exercise;
+  var ex = DATA.exercise || {};
   var html = '<div class="section"><div class="section-title">Programa semanal</div>';
-  ex.days.forEach(function(day, di) {
+  (ex.days || []).forEach(function(day, di) {
+    day = day || {};
     var rows = '';
-    day.exercises.filter(function(r) { return r[0]; }).forEach(function(row, ri) {
+    (day.exercises || []).filter(function(r) { return r && r[0]; }).forEach(function(row, ri) {
       var id = di + '-' + ri;
       var nota = row[4] || '';
       rows += '<tr><td><div>' + row[0] + '</div>';
@@ -443,8 +445,8 @@ function renderEjercicio() {
       rows += '</td><td style="text-align:center">' + (row[1] || '-') + '</td><td style="text-align:center">' + (row[2] || '-') + '</td><td style="text-align:center">' + (row[3] || '-') + '</td></tr>';
     });
     html += '<div class="ex-day"><div class="day-header" data-toggle-day="' + di + '">';
-    html += '<span class="day-title">' + day.title + '</span>';
-    html += '<div style="display:flex;align-items:center;gap:8px"><span class="day-type ' + day.type + '">' + (day.type === 'fuerza' ? 'Fuerza' : 'Cardio') + '</span><span class="chevron" id="chev' + di + '">▾</span></div>';
+    html += '<span class="day-title">' + (day.title || '-') + '</span>';
+    html += '<div style="display:flex;align-items:center;gap:8px"><span class="day-type ' + (day.type || '') + '">' + (day.type === 'fuerza' ? 'Fuerza' : 'Cardio') + '</span><span class="chevron" id="chev' + di + '">▾</span></div>';
     html += '</div><div class="day-body" id="dayBody' + di + '"><table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table></div></div>';
   });
   html += '</div>';
