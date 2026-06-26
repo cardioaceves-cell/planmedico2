@@ -177,6 +177,8 @@ var notaOpen = {};
 var currentTab = 0;
 var alertsKey = 'alerts_' + PATIENT_ID;
 var alertsState = JSON.parse(localStorage.getItem(alertsKey) || '{}');
+var alertTimesKey = 'alert_times_' + PATIENT_ID;
+var alertTimesState = JSON.parse(localStorage.getItem(alertTimesKey) || '{}');
 var alertTimeouts = [];
 
 document.querySelectorAll('.tab').forEach(function(t) {
@@ -242,6 +244,17 @@ function bindEvents() {
       }
     });
   });
+  document.querySelectorAll('[data-alert-time]').forEach(function(input) {
+    input.addEventListener('change', function() {
+      var key = this.getAttribute('data-alert-time');
+      var val = this.value;
+      if (!val) return;
+      alertTimesState[key] = val;
+      localStorage.setItem(alertTimesKey, JSON.stringify(alertTimesState));
+      if (alertsState[key]) scheduleAllAlerts();
+      renderTab(currentTab);
+    });
+  });
 }
 
 function requestAlertPermission(idx, toggleEl) {
@@ -256,7 +269,7 @@ function requestAlertPermission(idx, toggleEl) {
   if (Notification.permission === 'granted') {
     alertsState[idx] = true;
     localStorage.setItem(alertsKey, JSON.stringify(alertsState));
-    scheduleAlert(parseInt(idx));
+    scheduleAlert(idx);
     renderTab(currentTab);
     return;
   }
@@ -264,7 +277,7 @@ function requestAlertPermission(idx, toggleEl) {
     alertsState[idx] = true;
     localStorage.setItem(alertsKey, JSON.stringify(alertsState));
     if (perm === 'granted') {
-      scheduleAlert(parseInt(idx));
+      scheduleAlert(idx);
     } else {
       showNotifBanner();
     }
@@ -296,15 +309,15 @@ function scheduleAlert(idx) {
   if (idxStr.indexOf('_3') !== -1) {
     realIdx = parseInt(idxStr.replace('_3', ''));
     suffix = '3a toma';
-    timeStr = DATA.meds[realIdx] ? DATA.meds[realIdx].alert_time3 : null;
+    timeStr = getAlertTime(realIdx, '_3');
   } else if (idxStr.indexOf('_2') !== -1) {
     realIdx = parseInt(idxStr.replace('_2', ''));
     suffix = '2a toma';
-    timeStr = DATA.meds[realIdx] ? DATA.meds[realIdx].alert_time2 : null;
+    timeStr = getAlertTime(realIdx, '_2');
   } else {
     realIdx = parseInt(idxStr);
     suffix = null;
-    timeStr = DATA.meds[realIdx] ? DATA.meds[realIdx].alert_time : null;
+    timeStr = getAlertTime(realIdx, '');
   }
   var med = DATA.meds[realIdx];
   if (!med || !timeStr) return;
@@ -328,14 +341,73 @@ function scheduleAllAlerts() {
   alertTimeouts.forEach(function(t) { clearTimeout(t); });
   alertTimeouts = [];
   if (!DATA || !DATA.meds) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
   DATA.meds.forEach(function(med, idx) {
-    if (alertsState[idx] && med.alert_time && Notification.permission === 'granted') scheduleAlert(idx);
-    if (alertsState[idx + '_2'] && med.alert_time2 && Notification.permission === 'granted') scheduleAlert(idx + '_2');
-    if (alertsState[idx + '_3'] && med.alert_time3 && Notification.permission === 'granted') scheduleAlert(idx + '_3');
+    var times = getMedAlertTimes(med, idx);
+    times.forEach(function(t) {
+      if (alertsState[t.key]) scheduleAlert(t.key);
+    });
   });
 }
 
 function val(v) { return (v === 0 || v) ? v : '-'; }
+
+function stripAccents(txt) {
+  txt = (txt == null) ? '' : String(txt);
+  return txt.normalize ? txt.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : txt;
+}
+
+function isSuspendedMed(m) {
+  var tx = stripAccents([m && m.name, m && m.dose, m && m.freq, m && m.notes].join(' ')).toLowerCase();
+  return tx.indexOf('suspend') !== -1 || tx.indexOf('no tomar') !== -1;
+}
+
+function inferAlertTimesFromMed(m) {
+  if (!m || isSuspendedMed(m)) return [];
+  var tx = stripAccents([m.name, m.dose, m.freq, m.notes].join(' ')).toLowerCase();
+  if (tx.indexOf('cada 8') !== -1 || tx.indexOf('c/8') !== -1 || tx.indexOf('tres veces') !== -1) return ['08:00', '14:00', '22:00'];
+  if (tx.indexOf('cada 12') !== -1 || tx.indexOf('c/12') !== -1 || tx.indexOf('dos veces') !== -1) return ['08:00', '20:00'];
+  if (tx.indexOf('noche') !== -1 || tx.indexOf('noct') !== -1 || tx.indexOf('cena') !== -1) return ['22:00'];
+  if (tx.indexOf('antes del desayuno') !== -1 || tx.indexOf('ayuno') !== -1) return ['07:30'];
+  if (tx.indexOf('comida principal') !== -1 || tx.indexOf('con comida') !== -1) return ['14:00'];
+  if (tx.indexOf('cada 24') !== -1 || tx.indexOf('c/24') !== -1 || tx.indexOf('una vez') !== -1 || tx.indexOf('diario') !== -1) return ['08:00'];
+  return [];
+}
+
+function getStoredOrPlanTime(m, idx, suffix) {
+  var key = String(idx) + suffix;
+  if (alertTimesState[key]) return alertTimesState[key];
+  if (!m) return '';
+  if (suffix === '_3') return m.alert_time3 || '';
+  if (suffix === '_2') return m.alert_time2 || '';
+  return m.alert_time || '';
+}
+
+function getMedAlertTimes(m, idx) {
+  var inferred = inferAlertTimesFromMed(m);
+  var raw = [
+    getStoredOrPlanTime(m, idx, ''),
+    getStoredOrPlanTime(m, idx, '_2'),
+    getStoredOrPlanTime(m, idx, '_3')
+  ];
+  for (var i = 0; i < inferred.length && i < raw.length; i++) {
+    if (!raw[i]) raw[i] = inferred[i];
+  }
+  var labels = ['1a toma', '2a toma', '3a toma'];
+  return raw.map(function(time, i) {
+    if (!time) return null;
+    return { key: String(idx) + (i === 0 ? '' : '_' + (i + 1)), time: time, label: labels[i] };
+  }).filter(Boolean);
+}
+
+function getAlertTime(realIdx, suffix) {
+  var med = DATA && DATA.meds ? DATA.meds[realIdx] : null;
+  var key = String(realIdx) + suffix;
+  if (alertTimesState[key]) return alertTimesState[key];
+  var times = getMedAlertTimes(med, realIdx);
+  var item = times.filter(function(t) { return t.key === key; })[0];
+  return item ? item.time : '';
+}
 
 // Asegura estructura completa para que ningun render acceda a undefined.
 // Mapea el esquema clínico en español (el que genera la IA: paciente,
@@ -353,7 +425,15 @@ function mapSpanishPlan(data) {
   var diag = (P.diagnosticos && P.diagnosticos.length) ? P.diagnosticos.join(' · ') : s(data.dx);
   data.patient = { name: s(P.nombre) || s((data.patient || {}).name), age: s(P.edad), weight: withUnit(P.peso_kg, 'kg'), height: withUnit(P.talla_cm, 'cm'), dx: diag };
   var medsSrc = (P.medicamentos && P.medicamentos.length) ? P.medicamentos : (data.medicamentos || []);
-  data.meds = medsSrc.map(function(m) { if (!m) return {}; return { name: s(m.nombre || m.name), dose: s(m.dosis || m.dose), freq: (m.via ? s(m.via) + ' · ' : '') + s(m.frecuencia || m.freq), notes: s(m.nota || m.notes || ''), alert_time: '', alert_time2: '' }; });
+  data.meds = medsSrc.map(function(m) {
+    if (!m) return {};
+    var med = { name: s(m.nombre || m.name), dose: s(m.dosis || m.dose), freq: (m.via ? s(m.via) + ' · ' : '') + s(m.frecuencia || m.freq), notes: s(m.nota || m.notes || ''), alert_time: s(m.alert_time), alert_time2: s(m.alert_time2), alert_time3: s(m.alert_time3) };
+    var sugeridas = inferAlertTimesFromMed(med);
+    if (!med.alert_time && sugeridas[0]) med.alert_time = sugeridas[0];
+    if (!med.alert_time2 && sugeridas[1]) med.alert_time2 = sugeridas[1];
+    if (!med.alert_time3 && sugeridas[2]) med.alert_time3 = sugeridas[2];
+    return med;
+  });
   var req = (data.diagnostico_nutricional && data.diagnostico_nutricional.requerimientos) || {};
   var pa = data.plan_alimenticio || {};
   var meals = { desayuno: [], colacion_m: [], comida: [], colacion_v: [], cena: [] };
@@ -416,27 +496,23 @@ function renderMedicamentos() {
       html += '<div class="med-info">';
       html += '<div class="med-name">' + m.name + '</div>';
       html += '<div class="med-detail">' + val(m.dose) + ' · ' + val(m.freq) + '</div>';
-      if (m.alert_time) html += '<div class="med-time">Recordatorio: ' + m.alert_time + '</div>';
       if (m.notes) html += '<div class="med-note">' + m.notes + '</div>';
-      var times = [];
-      if (m.alert_time) times.push({key: String(idx), time: m.alert_time, label: '1a toma'});
-      if (m.alert_time2) times.push({key: idx + '_2', time: m.alert_time2, label: '2a toma'});
-      if (m.alert_time3) times.push({key: idx + '_3', time: m.alert_time3, label: '3a toma'});
+      var times = getMedAlertTimes(m, idx);
+      if (!times.length && !isSuspendedMed(m)) {
+        times.push({key: String(idx), time: '', label: 'Configurar'});
+      }
       times.forEach(function(t) {
         var on = alertsState[t.key] || false;
-        var lbl = times.length > 1 ? t.label + ': ' + t.time : t.time;
-        html += '<div class="med-time">Recordatorio' + (times.length > 1 ? ' ' + t.label : '') + ': ' + t.time + '</div>';
-        html += '<div class="med-alert"><span class="alert-badge ' + (on ? 'alert-on' : 'alert-off') + '">' + (on ? 'Alerta ON' : 'Alerta OFF') + '</span></div>';
+        html += '<div class="med-alert" style="align-items:center;justify-content:space-between;gap:10px">';
+        html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+        html += '<span class="alert-badge ' + (on ? 'alert-on' : 'alert-off') + '">' + (t.time ? (on ? 'Alerta ON' : 'Alerta OFF') : 'Configurar alerta') + '</span>';
+        html += '<span class="med-time" style="margin-top:0">Recordatorio' + (times.length > 1 ? ' ' + t.label : '') + '</span>';
+        html += '<input type="time" value="' + (t.time || '') + '" data-alert-time="' + t.key + '" style="border:1px solid #D4A017;border-radius:8px;padding:5px 8px;color:#1A2D5A;font-family:inherit;font-size:12px;background:#fff">';
+        html += '</div>';
+        if (t.time) html += '<div class="toggle ' + (on ? 'on' : 'off') + '" data-alert-idx="' + t.key + '"><div class="toggle-knob"></div></div>';
+        html += '</div>';
       });
       html += '</div>';
-      if (times.length > 0) {
-        html += '<div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;margin-top:4px">';
-        times.forEach(function(t) {
-          var on = alertsState[t.key] || false;
-          html += '<div class="toggle ' + (on ? 'on' : 'off') + '" data-alert-idx="' + t.key + '"><div class="toggle-knob"></div></div>';
-        });
-        html += '</div>';
-      }
       html += '</div>';
     });
     html += '</div>';

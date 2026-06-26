@@ -266,6 +266,28 @@ document.querySelectorAll('input[name="accessType"]').forEach(function(radio) {
 // Mapea el esquema clínico en español (el que genera la IA) al esquema inglés
 // que la app del paciente renderiza, antes de guardar. Si ya viene en inglés
 // con contenido, lo deja igual.
+function stripAccents(txt) {
+  txt = (txt == null) ? '' : String(txt);
+  return txt.normalize ? txt.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : txt;
+}
+
+function isSuspendedMed(m) {
+  var tx = stripAccents([m && m.name, m && m.dose, m && m.freq, m && m.notes].join(' ')).toLowerCase();
+  return tx.indexOf('suspend') !== -1 || tx.indexOf('no tomar') !== -1;
+}
+
+function inferAlertTimesFromMed(m) {
+  if (!m || isSuspendedMed(m)) return [];
+  var tx = stripAccents([m.name, m.dose, m.freq, m.notes].join(' ')).toLowerCase();
+  if (tx.indexOf('cada 8') !== -1 || tx.indexOf('c/8') !== -1 || tx.indexOf('tres veces') !== -1) return ['08:00', '14:00', '22:00'];
+  if (tx.indexOf('cada 12') !== -1 || tx.indexOf('c/12') !== -1 || tx.indexOf('dos veces') !== -1) return ['08:00', '20:00'];
+  if (tx.indexOf('noche') !== -1 || tx.indexOf('noct') !== -1 || tx.indexOf('cena') !== -1) return ['22:00'];
+  if (tx.indexOf('antes del desayuno') !== -1 || tx.indexOf('ayuno') !== -1) return ['07:30'];
+  if (tx.indexOf('comida principal') !== -1 || tx.indexOf('con comida') !== -1) return ['14:00'];
+  if (tx.indexOf('cada 24') !== -1 || tx.indexOf('c/24') !== -1 || tx.indexOf('una vez') !== -1 || tx.indexOf('diario') !== -1) return ['08:00'];
+  return [];
+}
+
 function mapSpanishPlan(data) {
   if (!data || typeof data !== 'object') return data;
   var hasEng = data.patient && (data.patient.name || (Array.isArray(data.meds) && data.meds.length));
@@ -277,7 +299,15 @@ function mapSpanishPlan(data) {
   var diag = (P.diagnosticos && P.diagnosticos.length) ? P.diagnosticos.join(' · ') : s(data.dx);
   data.patient = { name: s(P.nombre) || s((data.patient || {}).name), age: s(P.edad), weight: withUnit(P.peso_kg, 'kg'), height: withUnit(P.talla_cm, 'cm'), dx: diag };
   var medsSrc = (P.medicamentos && P.medicamentos.length) ? P.medicamentos : (data.medicamentos || []);
-  data.meds = medsSrc.map(function(m) { if (!m) return {}; return { name: s(m.nombre || m.name), dose: s(m.dosis || m.dose), freq: (m.via ? s(m.via) + ' · ' : '') + s(m.frecuencia || m.freq), notes: s(m.nota || m.notes || ''), alert_time: '', alert_time2: '' }; });
+  data.meds = medsSrc.map(function(m) {
+    if (!m) return {};
+    var med = { name: s(m.nombre || m.name), dose: s(m.dosis || m.dose), freq: (m.via ? s(m.via) + ' · ' : '') + s(m.frecuencia || m.freq), notes: s(m.nota || m.notes || ''), alert_time: s(m.alert_time), alert_time2: s(m.alert_time2), alert_time3: s(m.alert_time3) };
+    var sugeridas = inferAlertTimesFromMed(med);
+    if (!med.alert_time && sugeridas[0]) med.alert_time = sugeridas[0];
+    if (!med.alert_time2 && sugeridas[1]) med.alert_time2 = sugeridas[1];
+    if (!med.alert_time3 && sugeridas[2]) med.alert_time3 = sugeridas[2];
+    return med;
+  });
   var req = (data.diagnostico_nutricional && data.diagnostico_nutricional.requerimientos) || {};
   var pa = data.plan_alimenticio || {};
   var meals = { desayuno: [], colacion_m: [], comida: [], colacion_v: [], cena: [] };
