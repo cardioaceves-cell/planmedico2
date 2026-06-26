@@ -263,6 +263,41 @@ document.querySelectorAll('input[name="accessType"]').forEach(function(radio) {
   });
 });
 
+// Mapea el esquema clínico en español (el que genera la IA) al esquema inglés
+// que la app del paciente renderiza, antes de guardar. Si ya viene en inglés
+// con contenido, lo deja igual.
+function mapSpanishPlan(data) {
+  if (!data || typeof data !== 'object') return data;
+  var hasEng = data.patient && (data.patient.name || (Array.isArray(data.meds) && data.meds.length));
+  if (hasEng) return data;
+  if (!data.paciente && !data.plan_alimenticio && !data.entrenamiento && !data.medicamentos) return data;
+  var P = data.paciente || {};
+  function s(v) { return (v == null) ? '' : String(v); }
+  function withUnit(v, u) { v = s(v).trim(); if (!v) return ''; return /[a-zA-Z]/.test(v) ? v : v + ' ' + u; }
+  var diag = (P.diagnosticos && P.diagnosticos.length) ? P.diagnosticos.join(' · ') : s(data.dx);
+  data.patient = { name: s(P.nombre) || s((data.patient || {}).name), age: s(P.edad), weight: withUnit(P.peso_kg, 'kg'), height: withUnit(P.talla_cm, 'cm'), dx: diag };
+  var medsSrc = (P.medicamentos && P.medicamentos.length) ? P.medicamentos : (data.medicamentos || []);
+  data.meds = medsSrc.map(function(m) { if (!m) return {}; return { name: s(m.nombre || m.name), dose: s(m.dosis || m.dose), freq: (m.via ? s(m.via) + ' · ' : '') + s(m.frecuencia || m.freq), notes: s(m.nota || m.notes || ''), alert_time: '', alert_time2: '' }; });
+  var req = (data.diagnostico_nutricional && data.diagnostico_nutricional.requerimientos) || {};
+  var pa = data.plan_alimenticio || {};
+  var meals = { desayuno: [], colacion_m: [], comida: [], colacion_v: [], cena: [] };
+  function mealKey(t) { t = s(t).toLowerCase(); t = t.normalize ? t.normalize('NFD').replace(/[̀-ͯ]/g, '') : t; if (t.indexOf('desayuno') === 0) return 'desayuno'; if (t.indexOf('matutina') !== -1) return 'colacion_m'; if (t.indexOf('vespertina') !== -1) return 'colacion_v'; if (t.indexOf('comida') === 0 || t.indexOf('almuerzo') !== -1) return 'comida'; if (t.indexOf('cena') === 0) return 'cena'; return null; }
+  (pa.dias || []).forEach(function(item) { if (!item) return; var k = mealKey(item.tiempo); if (k && item.opciones && item.opciones.length) { meals[k] = item.opciones.map(function(o) { return (typeof o === 'string') ? o : JSON.stringify(o); }); } });
+  var goals = s(pa.objetivo);
+  if (pa.advertencia_potasio) goals += (goals ? '\n\n' : '') + '⚠ Potasio: ' + s(pa.advertencia_potasio);
+  data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals };
+  var ent = data.entrenamiento || {};
+  var days = [];
+  if (ent.nota_seguridad || ent.objetivo) { days.push({ title: '⚠ Seguridad y objetivo', type: 'cardio', exercises: [['Leer antes de iniciar', '', '', '', (ent.objetivo ? 'Objetivo: ' + s(ent.objetivo) + '\n\n' : '') + s(ent.nota_seguridad)]] }); }
+  (ent.sesiones || []).forEach(function(se) { if (!se) return; var tx = (s(se.tipo) + ' ' + s(se.nota) + ' ' + s(se.intensidad)).toLowerCase(); var type = (tx.indexOf('fuerza') !== -1 || tx.indexOf('fortalec') !== -1 || tx.indexOf('pesas') !== -1 || tx.indexOf('resistenc') !== -1) ? 'fuerza' : 'cardio'; days.push({ title: s(se.tipo) || 'Sesión', type: type, exercises: [[s(se.tipo) || 'Actividad', s(se.frecuencia), s(se.duracion), s(se.intensidad), s(se.nota)]] }); });
+  data.exercise = { days: days, weeks: s(ent.semanas || (data.exercise && data.exercise.weeks) || '') };
+  var ind = s(data.indications);
+  if (data.suplementacion && data.suplementacion.length) { ind += (ind ? '\n\n' : '') + 'SUPLEMENTACIÓN:\n' + data.suplementacion.map(function(x) { return '• ' + s(x.nombre) + (x.dosis ? ' ' + s(x.dosis) : '') + (x.momento ? ' (' + s(x.momento) + ')' : '') + (x.justificacion ? ' — ' + s(x.justificacion) : ''); }).join('\n'); }
+  if (data.recomendaciones_especiales && data.recomendaciones_especiales.length) { ind += (ind ? '\n\n' : '') + 'RECOMENDACIONES:\n' + data.recomendaciones_especiales.map(function(x) { return '• ' + s(x); }).join('\n'); }
+  data.indications = ind;
+  return data;
+}
+
 document.getElementById('saveBtn').addEventListener('click', function() {
   var raw = document.getElementById('jsonArea').value.trim();
   var err = document.getElementById('jsonError');
@@ -271,6 +306,7 @@ document.getElementById('saveBtn').addEventListener('click', function() {
   box.classList.remove('show');
   var parsed;
   try { parsed = JSON.parse(raw); } catch(e) { err.textContent = 'JSON invalido. Copia el codigo completo que te dio Claude.'; return; }
+  parsed = mapSpanishPlan(parsed);
   fetch('/api/patients', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},

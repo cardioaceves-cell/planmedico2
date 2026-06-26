@@ -80,6 +80,20 @@ async function initDB() {
 app.use(express.json({limit: '5mb'}));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Nombre/dx tolerante a esquema inglés (patient) o español (paciente).
+function planName(d) {
+  if (!d) return 'Sin nombre';
+  if (d.patient && d.patient.name) return d.patient.name;
+  if (d.paciente && d.paciente.nombre) return d.paciente.nombre;
+  return 'Sin nombre';
+}
+function planDx(d) {
+  if (!d) return '';
+  if (d.patient && d.patient.dx) return d.patient.dx;
+  if (d.paciente && d.paciente.diagnosticos && d.paciente.diagnosticos.length) return d.paciente.diagnosticos.join(' · ');
+  return '';
+}
+
 app.post('/api/patients', async (req, res) => {
   try {
     if (!req.body || !req.body.data) return res.status(400).json({error: 'No data'});
@@ -107,8 +121,8 @@ app.get('/api/patients', async (req, res) => {
     const r = await db.query('SELECT id, data, free, created_at FROM patients ORDER BY created_at DESC');
     res.json(r.rows.map(row => ({
       id: row.id,
-      name: row.data && row.data.patient ? row.data.patient.name : 'Sin nombre',
-      dx: row.data && row.data.patient ? row.data.patient.dx : '',
+      name: planName(row.data),
+      dx: planDx(row.data),
       free: row.free || false,
       createdAt: row.created_at
     })));
@@ -192,7 +206,7 @@ app.get('/api/codes', async (req, res) => {
       WHERE ac.used = FALSE ORDER BY ac.created_at DESC LIMIT 20`);
     res.json(r.rows.map(row => ({
       code: row.code, email: row.email, patientId: row.patient_id,
-      name: row.data && row.data.patient ? row.data.patient.name : 'Sin nombre',
+      name: planName(row.data),
       createdAt: row.created_at
     })));
   } catch(e) { res.status(500).json({error: e.message}); }
