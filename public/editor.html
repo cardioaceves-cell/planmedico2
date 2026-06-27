@@ -235,6 +235,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 var currentLink = '';
 var selectedDays = null;
 var selectedDateType = null;
+var qsAdminKey = new URLSearchParams(window.location.search).get('admin_key') || '';
+var ADMIN_KEY = qsAdminKey.trim() || localStorage.getItem('plan_admin_key') || '';
+if (qsAdminKey.trim()) {
+  localStorage.setItem('plan_admin_key', qsAdminKey.trim());
+  history.replaceState(null, document.title, '/editor');
+}
+
+function ensureAdminKey(force) {
+  if (ADMIN_KEY && !force) return ADMIN_KEY;
+  var key = prompt('Clave administrativa del editor:');
+  if (key && key.trim()) {
+    ADMIN_KEY = key.trim();
+    localStorage.setItem('plan_admin_key', ADMIN_KEY);
+  }
+  return ADMIN_KEY;
+}
+
+function adminHeaders(headers) {
+  var h = {};
+  Object.keys(headers || {}).forEach(function(k) { h[k] = headers[k]; });
+  if (ADMIN_KEY) h['X-Admin-Key'] = ADMIN_KEY;
+  return h;
+}
+
+function adminFetch(url, options, retry) {
+  options = options || {};
+  options.headers = adminHeaders(options.headers);
+  return fetch(url, options).then(function(r) {
+    if (r.status === 403 && retry !== false) {
+      localStorage.removeItem('plan_admin_key');
+      ADMIN_KEY = '';
+      if (ensureAdminKey(true)) return adminFetch(url, options, false);
+    }
+    return r;
+  });
+}
+
+ensureAdminKey(false);
 
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -337,7 +375,7 @@ document.getElementById('saveBtn').addEventListener('click', function() {
   var parsed;
   try { parsed = JSON.parse(raw); } catch(e) { err.textContent = 'JSON invalido. Copia el codigo completo que te dio Claude.'; return; }
   parsed = mapSpanishPlan(parsed);
-  fetch('/api/patients', {
+  adminFetch('/api/patients', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({data: parsed, free: document.querySelector('input[name="accessType"]:checked').value === 'free'})
@@ -366,7 +404,7 @@ document.getElementById('whatsappBtn').addEventListener('click', function() {
 // Patients list
 function loadPatients() {
   var list = document.getElementById('patientList');
-  fetch('/api/patients')
+  adminFetch('/api/patients')
   .then(function(r) { return r.json(); })
   .then(function(patients) {
     if (!patients.length) { list.innerHTML = '<div class="empty">Sin pacientes guardados</div>'; return; }
@@ -398,7 +436,7 @@ function loadPatients() {
         var id = this.getAttribute('data-id');
         var link = prompt('Pega el link de Google Drive del ECG:');
         if (!link || !link.trim()) return;
-        fetch('/api/patients/' + id + '/ecg', {
+        adminFetch('/api/patients/' + id + '/ecg', {
           method: 'PATCH',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ecg_link: link.trim()})
@@ -411,7 +449,7 @@ function loadPatients() {
       btn.addEventListener('click', function() {
         var id = this.getAttribute('data-id');
         if (!confirm('Eliminar este paciente?')) return;
-        fetch('/api/patients/' + id, {method: 'DELETE'}).then(function() { showToast('Eliminado'); loadPatients(); });
+        adminFetch('/api/patients/' + id, {method: 'DELETE'}).then(function() { showToast('Eliminado'); loadPatients(); });
       });
     });
   })
@@ -421,7 +459,7 @@ function loadPatients() {
 // Codes list
 function loadCodes() {
   var list = document.getElementById('codesList');
-  fetch('/api/codes')
+  adminFetch('/api/codes')
   .then(function(r) { return r.json(); })
   .then(function(codes) {
     if (!codes.length) { list.innerHTML = '<div class="empty">Sin codigos pendientes</div>'; return; }
@@ -444,7 +482,7 @@ function loadCodes() {
 
 // Reminders
 function loadPatientsForReminder() {
-  fetch('/api/patients')
+  adminFetch('/api/patients')
   .then(function(r) { return r.json(); })
   .then(function(patients) {
     var sel = document.getElementById('reminderPatient');
@@ -510,7 +548,7 @@ document.getElementById('saveReminderBtn').addEventListener('click', function() 
     }
   };
 
-  fetch('/api/reminders/' + patientId, {
+  adminFetch('/api/reminders/' + patientId, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(reminder)

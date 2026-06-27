@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const {Client} = require('pg');
 const {nanoid} = require('nanoid');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -78,7 +79,57 @@ async function initDB() {
 }
 
 app.use(express.json({limit: '5mb'}));
+app.use((req, res, next) => {
+  if (req.path === '/editor.html') return res.redirect('/editor');
+  next();
+});
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+function getAdminKey() {
+  return String(process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD || '').trim();
+}
+
+function bearerToken(req) {
+  const auth = req.get('Authorization') || '';
+  return auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+}
+
+function isAdmin(req) {
+  const key = getAdminKey();
+  if (!key) return false;
+  return req.get('X-Admin-Key') === key || req.query.admin_key === key || bearerToken(req) === key;
+}
+
+function requireAdmin(req, res, next) {
+  if (!isAdmin(req)) return res.status(403).json({error: 'No autorizado'});
+  next();
+}
+
+function cookieValue(req, name) {
+  const raw = req.get('Cookie') || '';
+  const found = raw.split(';').map(x => x.trim()).find(x => x.startsWith(name + '='));
+  return found ? decodeURIComponent(found.slice(name.length + 1)) : '';
+}
+
+function adminSessionToken() {
+  const key = getAdminKey();
+  return key ? crypto.createHash('sha256').update('planmedico2:' + key).digest('hex') : '';
+}
+
+function hasAdminSession(req) {
+  const token = adminSessionToken();
+  return !!token && cookieValue(req, 'pm_admin') === token;
+}
+
+function patientTokenFromReq(req) {
+  return String(req.get('X-Patient-Token') || req.query.token || bearerToken(req) || '').trim();
+}
+
+async function hasPatientAccess(patientId, token) {
+  if (!token) return false;
+  const r = await db.query('SELECT 1 FROM patient_tokens WHERE patient_id = $1 AND token = $2 LIMIT 1', [patientId, token]);
+  return r.rows.length > 0;
+}
 
 // Nombre/dx tolerante a esquema inglés (patient) o español (paciente).
 function planName(d) {
@@ -94,7 +145,7 @@ function planDx(d) {
   return '';
 }
 
-app.post('/api/patients', async (req, res) => {
+app.post('/api/patients', requireAdmin, async (req, res) => {
   try {
     if (!req.body || !req.body.data) return res.status(400).json({error: 'No data'});
     const {free} = req.body;
@@ -110,13 +161,19 @@ app.get('/api/patients/:id', async (req, res) => {
   try {
     const r = await db.query('SELECT * FROM patients WHERE id = $1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({error: 'No encontrado'});
+    const row = r.rows[0];
+    const free = row.free || false;
+    const allowed = free || isAdmin(req) || await hasPatientAccess(req.params.id, patientTokenFromReq(req));
+    if (!allowed) {
+      return res.json({id: row.id, free: false, requiresCode: true});
+    }
     const rem = await db.query('SELECT reminder FROM reminders WHERE patient_id = $1 ORDER BY created_at ASC', [req.params.id]);
     const vers = await db.query('SELECT id, data, created_at FROM patient_versions WHERE patient_id = $1 ORDER BY created_at DESC LIMIT 10', [req.params.id]);
-    res.json({id: r.rows[0].id, data: r.rows[0].data, free: r.rows[0].free || false, reminders: rem.rows.map(r => r.reminder), planStart: r.rows[0].created_at, versions: vers.rows});
+    res.json({id: row.id, data: row.data, free, reminders: rem.rows.map(r => r.reminder), planStart: row.created_at, versions: vers.rows});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.get('/api/patients', async (req, res) => {
+app.get('/api/patients', requireAdmin, async (req, res) => {
   try {
     const r = await db.query('SELECT id, data, free, created_at FROM patients ORDER BY created_at DESC');
     res.json(r.rows.map(row => ({
@@ -129,7 +186,7 @@ app.get('/api/patients', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.put('/api/patients/:id', async (req, res) => {
+app.put('/api/patients/:id', requireAdmin, async (req, res) => {
   try {
     const {free} = req.body;
     const data = normalizePlan(req.body && req.body.data);
@@ -143,14 +200,14 @@ app.put('/api/patients/:id', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.get('/api/patients/:id/versions', async (req, res) => {
+app.get('/api/patients/:id/versions', requireAdmin, async (req, res) => {
   try {
     const r = await db.query('SELECT id, data, created_at FROM patient_versions WHERE patient_id = $1 ORDER BY created_at DESC LIMIT 10', [req.params.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.patch('/api/patients/:id/free', async (req, res) => {
+app.patch('/api/patients/:id/free', requireAdmin, async (req, res) => {
   try {
     const {free} = req.body;
     await db.query('UPDATE patients SET free = $1 WHERE id = $2', [free, req.params.id]);
@@ -158,7 +215,7 @@ app.patch('/api/patients/:id/free', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.patch('/api/patients/:id/ecg', async (req, res) => {
+app.patch('/api/patients/:id/ecg', requireAdmin, async (req, res) => {
   try {
     const {ecg_link} = req.body;
     // Save ECG link into the latest version's data
@@ -173,14 +230,14 @@ app.patch('/api/patients/:id/ecg', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.delete('/api/patients/:id', async (req, res) => {
+app.delete('/api/patients/:id', requireAdmin, async (req, res) => {
   try {
     await db.query('DELETE FROM patients WHERE id = $1', [req.params.id]);
     res.json({ok: true});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/reminders/:id', async (req, res) => {
+app.post('/api/reminders/:id', requireAdmin, async (req, res) => {
   try {
     await db.query('INSERT INTO reminders (patient_id, reminder) VALUES ($1, $2)', [req.params.id, req.body]);
     res.json({ok: true});
@@ -195,11 +252,11 @@ app.post('/api/send-code', async (req, res) => {
     if (!p.rows.length) return res.status(404).json({error: 'Plan no encontrado'});
     const code = String(Math.floor(100000 + Math.random() * 900000));
     await db.query('INSERT INTO access_codes (patient_id, email, code) VALUES ($1, $2, $3)', [patientId, email.toLowerCase(), code]);
-    res.json({ok: true, code});
+    res.json({ok: true});
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.get('/api/codes', async (req, res) => {
+app.get('/api/codes', requireAdmin, async (req, res) => {
   try {
     const r = await db.query(`SELECT ac.code, ac.email, ac.patient_id, ac.created_at, p.data
       FROM access_codes ac JOIN patients p ON p.id = ac.patient_id
@@ -239,7 +296,19 @@ app.post('/api/verify-token', async (req, res) => {
 });
 
 app.get('/p/:id', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'patient.html')); });
-app.get('/editor', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'editor.html')); });
+app.get('/editor', (req, res) => {
+  if (!getAdminKey()) {
+    return res.status(503).send('<!doctype html><meta charset="utf-8"><title>Editor</title><body style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:32px;color:#1A2D5A"><h2>Editor no configurado</h2><p>Configura ADMIN_KEY en Railway para habilitar el panel médico.</p></body>');
+  }
+  if (isAdmin(req)) {
+    res.setHeader('Set-Cookie', 'pm_admin=' + encodeURIComponent(adminSessionToken()) + '; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400');
+    return res.sendFile(path.join(__dirname, '..', 'public', 'editor.html'));
+  }
+  if (hasAdminSession(req)) {
+    return res.sendFile(path.join(__dirname, '..', 'public', 'editor.html'));
+  }
+  res.status(401).send('<!doctype html><meta charset="utf-8"><title>Editor</title><body style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#F5F5F5;color:#1A2D5A;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0"><form method="GET" action="/editor" style="background:white;border-left:4px solid #8B0000;border-radius:14px;padding:24px;box-shadow:0 6px 24px rgba(26,45,90,.12);width:min(360px,92vw)"><h2 style="margin:0 0 8px;color:#8B0000">Panel médico</h2><p style="font-size:13px;color:#666;line-height:1.5">Ingresa la clave administrativa para abrir el editor.</p><input name="admin_key" type="password" autocomplete="current-password" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin:14px 0;font-size:15px"><button style="width:100%;padding:12px;border:0;border-radius:10px;background:#8B0000;color:white;font-weight:700">Entrar</button></form></body>');
+});
 app.get('/sarita', (req, res) => { res.sendFile(path.join(__dirname, '..', 'public', 'sarita-medicamentos.html')); });
 
 initDB().then(() => { app.listen(PORT, () => console.log('Server running on port ' + PORT)); })
