@@ -1,0 +1,72 @@
+{
+  "paciente": {
+    "nombre": "Juan Pérez López",
+    "edad": "62",
+    "peso_kg": "78",
+    "talla_cm": "170",
+    "diagnosticos": [
+      "Insuficiencia cardíaca con FEVI reducida (35%)",
+      "Hipertensión arterial sistémica",
+      "Enfermedad renal crónica KDIGO G3a"
+    ]
+  },
+  "medicamentos": [
+    { "nombre": "Sacubitrilo/Valsartán", "dosis": "49/51 mg", "via": "Oral", "frecuencia": "Cada 12 horas", "nota": "Tomar con alimentos" },
+    { "nombre": "Empagliflozina", "dosis": "10 mg", "via": "Oral", "frecuencia": "Cada 24 horas", "nota": "Por la mañana" },
+    { "nombre": "Furosemida", "dosis": "40 mg", "via": "Oral", "frecuencia": "Cada 24 horas", "nota": "En ayuno, vigilar peso diario" }
+  ],
+  "diagnostico_nutricional": {
+    "requerimientos": {
+      "kcal_dia": "1800 kcal",
+      "proteina_g_dia": "70 g",
+      "carbohidratos": "225 g",
+      "grasas": "60 g",
+      "fibra": "30 g",
+      "sodio": "2000 mg",
+      "liquidos": "1500 ml"
+    }
+  },
+  "plan_alimenticio": {
+    "objetivo": "Reducir sodio y mantener 1800 kcal/día para control de presión",
+    "advertencia_potasio": "Limitar plátano, naranja y jitomate por función renal",
+    "dias": [
+      { "tiempo": "Desayuno", "opciones": [
+        "Avena cocida (1 taza) con manzana picada y 30 g de nuez",
+        "2 huevos revueltos con espinaca y 1 rebanada de pan integral"
+      ]},
+      { "tiempo": "Colacion matutina", "opciones": [
+        "1 yogur natural sin azúcar con 1 cucharada de chía",
+        "10 almendras y 1 pera"
+      ]},
+      { "tiempo": "Comida", "opciones": [
+        "120 g de pechuga de pollo a la plancha, arroz integral (1/2 taza) y ensalada verde",
+        "Filete de pescado al horno con calabacitas y 1/2 taza de quinoa"
+      ]},
+      { "tiempo": "Colacion vespertina", "opciones": [
+        "1 manzana con 1 cucharada de crema de cacahuate",
+        "Bastones de zanahoria con hummus (2 cucharadas)"
+      ]},
+      { "tiempo": "Cena", "opciones": [
+        "Sopa de verduras y 1 quesadilla de tortilla integral con panela",
+        "Ensalada de atún en agua con lechuga, pepino y aguacate"
+      ]}
+    ]
+  },
+  "entrenamiento": {
+    "objetivo": "Mejorar capacidad funcional sin sobrecargar el corazón",
+    "nota_seguridad": "Detener si hay disnea, dolor torácico o mareo. No exceder 6/10 de esfuerzo percibido.",
+    "semanas": "8",
+    "sesiones": [
+      { "tipo": "Caminata aeróbica", "frecuencia": "5 días/semana", "duracion": "30 min", "intensidad": "Ligera a moderada (4-6/10)", "nota": "Iniciar con 10 min e ir subiendo" },
+      { "tipo": "Fuerza con ligas", "frecuencia": "2 días/semana", "duracion": "20 min", "intensidad": "Baja resistencia", "nota": "2 series de 12 repeticiones, sin contener la respiración" }
+    ]
+  },
+  "suplementacion": [
+    { "nombre": "Vitamina D3", "dosis": "2000 UI", "momento": "Con la comida", "justificacion": "Niveles bajos en estudio reciente" }
+  ],
+  "recomendaciones_especiales": [
+    "Pesarse cada mañana en ayuno y anotar el peso",
+    "Avisar si sube más de 2 kg en 3 días (signo de retención de líquidos)",
+    "No agregar sal de mesa a los alimentos"
+  ]
+}
