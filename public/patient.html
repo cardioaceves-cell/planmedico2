@@ -458,9 +458,16 @@ function mapSpanishPlan(data) {
   var meals = { desayuno: [], colacion_m: [], comida: [], colacion_v: [], cena: [] };
   function mealKey(t) { t = s(t).toLowerCase(); t = t.normalize ? t.normalize('NFD').replace(/[̀-ͯ]/g, '') : t; if (t.indexOf('desayuno') === 0) return 'desayuno'; if (t.indexOf('matutina') !== -1) return 'colacion_m'; if (t.indexOf('vespertina') !== -1) return 'colacion_v'; if (t.indexOf('comida') === 0 || t.indexOf('almuerzo') !== -1) return 'comida'; if (t.indexOf('cena') === 0) return 'cena'; return null; }
   (pa.dias || []).forEach(function(item) { if (!item) return; var k = mealKey(item.tiempo); if (k && item.opciones && item.opciones.length) { meals[k] = item.opciones.map(optText).filter(function(x){ return x; }); } });
+  // Lista dinámica: conserva el nombre y TODAS las opciones de cada tiempo, en orden.
+  var mealList = (pa.dias || []).map(function(item) {
+    if (!item) return null;
+    var opts = (item.opciones || []).map(optText).filter(function(x){ return x; });
+    if (!opts.length) return null;
+    return { label: s(item.tiempo) || 'Comida', options: opts };
+  }).filter(Boolean);
   var goals = s(pa.objetivo);
   if (pa.advertencia_potasio) goals += (goals ? '\n\n' : '') + '⚠ Potasio: ' + s(pa.advertencia_potasio);
-  data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals };
+  data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals, mealList: mealList };
   var ent = data.entrenamiento || {};
   var days = [];
   if (ent.nota_seguridad || ent.objetivo) { days.push({ title: '⚠ Seguridad y objetivo', type: 'cardio', exercises: [['Leer antes de iniciar', '', '', '', (ent.objetivo ? 'Objetivo: ' + s(ent.objetivo) + '\n\n' : '') + s(ent.nota_seguridad)]] }); }
@@ -485,6 +492,15 @@ function normalizePlan(input) {
   var meals = (n.meals && typeof n.meals === 'object') ? n.meals : {};
   ['desayuno','colacion_m','comida','colacion_v','cena'].forEach(function(k){ if (!Array.isArray(meals[k])) meals[k] = []; });
   n.meals = meals;
+  // Saneamos la lista dinámica (si existe): cada entrada con label y opciones[] de texto.
+  if (Array.isArray(n.mealList)) {
+    n.mealList = n.mealList.map(function(m) {
+      if (!m || typeof m !== 'object') return null;
+      var opts = Array.isArray(m.options) ? m.options.map(optText).filter(function(x){ return x; }) : [];
+      if (!opts.length) return null;
+      return { label: (m.label == null ? '' : String(m.label)) || 'Comida', options: opts };
+    }).filter(Boolean);
+  }
   data.nutrition = n;
   var ex = (data.exercise && typeof data.exercise === 'object') ? data.exercise : {};
   ex.days = Array.isArray(ex.days) ? ex.days.filter(function(d){ return d && typeof d === 'object'; }) : [];
@@ -552,26 +568,46 @@ function renderMedicamentos() {
   return html;
 }
 
-function renderNutricion() {
-  var n = (DATA && DATA.nutrition) || {};
+// Construye la lista de comidas a mostrar. Prioriza la lista dinámica (mealList,
+// que conserva los tiempos y opciones exactos del plan); si no existe (pacientes
+// guardados antes de este cambio), arma la lista desde el formato fijo anterior.
+function buildMealList(n) {
+  if (Array.isArray(n.mealList) && n.mealList.length) {
+    return n.mealList.filter(function(m) { return m && m.options && m.options.length; });
+  }
   var keys = ['desayuno', 'colacion_m', 'comida', 'colacion_v', 'cena'];
   var labels = {desayuno: 'Desayuno', colacion_m: 'Colacion matutina', comida: 'Comida', colacion_v: 'Colacion vespertina', cena: 'Cena'};
+  return keys.map(function(k) {
+    return { label: labels[k], options: (n.meals && n.meals[k]) || [] };
+  }).filter(function(m) { return m.options.length; });
+}
+
+function renderNutricion() {
+  var n = (DATA && DATA.nutrition) || {};
   var html = '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">';
   [['Energia', n.kcal, 'kcal/dia'], ['Proteina', n.protein, 'g/dia'], ['Hidratos', n.carbs, 'g/dia'], ['Grasas', n.fat, '%'], ['Fibra', n.fiber, 'g/dia'], ['Sodio', n.sodium, 'g/dia']].forEach(function(s) {
     html += '<div class="stat-box"><div class="stat-label">' + s[0] + '</div><div class="stat-val">' + (s[1] || '-') + ' <span class="stat-unit">' + s[2] + '</span></div></div>';
   });
   html += '</div><div class="stat-box" style="margin-bottom:0"><div class="stat-label">Liquidos</div><div class="stat-val">' + (n.liquids || '-') + ' <span class="stat-unit">L/dia</span></div></div></div>';
+  var list = buildMealList(n);
   html += '<div class="section"><div class="section-title">Plan de alimentacion</div>';
-  keys.forEach(function(key) {
-    var opts = (n.meals && n.meals[key]) || [];
-    if (!mealOptTabs[key]) mealOptTabs[key] = 0;
-    var cur = mealOptTabs[key];
-    var tabBtns = '';
-    for (var i = 0; i < 4; i++) {
-      tabBtns += '<button class="opt-tab ' + (cur === i ? 'active' : '') + '" data-meal-key="' + key + '" data-meal-idx="' + i + '">Op. ' + (i + 1) + '</button>';
+  if (!list.length) {
+    html += '<div style="color:#bbb;font-size:13px;padding:4px 0">Sin plan de alimentacion cargado.</div>';
+  }
+  list.forEach(function(meal, mi) {
+    var opts = meal.options || [];
+    var key = 'meal_' + mi;
+    var cur = mealOptTabs[key] || 0;
+    if (cur >= opts.length) cur = 0;
+    html += '<div class="meal-block"><div class="meal-title">' + meal.label + '</div>';
+    // Solo mostramos pestañas si hay más de una opción; tantas como opciones haya.
+    if (opts.length > 1) {
+      var tabBtns = '';
+      for (var i = 0; i < opts.length; i++) {
+        tabBtns += '<button class="opt-tab ' + (cur === i ? 'active' : '') + '" data-meal-key="' + key + '" data-meal-idx="' + i + '">Op. ' + (i + 1) + '</button>';
+      }
+      html += '<div class="opt-tabs">' + tabBtns + '</div>';
     }
-    html += '<div class="meal-block"><div class="meal-title">' + labels[key] + '</div>';
-    html += '<div class="opt-tabs">' + tabBtns + '</div>';
     html += '<div class="opt-content">' + (opts[cur] || '<span style="color:#bbb">Sin contenido</span>') + '</div></div>';
   });
   html += '</div>';

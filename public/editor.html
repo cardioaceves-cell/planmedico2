@@ -369,9 +369,16 @@ function mapSpanishPlan(data) {
   var meals = { desayuno: [], colacion_m: [], comida: [], colacion_v: [], cena: [] };
   function mealKey(t) { t = s(t).toLowerCase(); t = t.normalize ? t.normalize('NFD').replace(/[̀-ͯ]/g, '') : t; if (t.indexOf('desayuno') === 0) return 'desayuno'; if (t.indexOf('matutina') !== -1) return 'colacion_m'; if (t.indexOf('vespertina') !== -1) return 'colacion_v'; if (t.indexOf('comida') === 0 || t.indexOf('almuerzo') !== -1) return 'comida'; if (t.indexOf('cena') === 0) return 'cena'; return null; }
   (pa.dias || []).forEach(function(item) { if (!item) return; var k = mealKey(item.tiempo); if (k && item.opciones && item.opciones.length) { meals[k] = item.opciones.map(optText).filter(function(x){ return x; }); } });
+  // Lista dinámica: conserva el nombre y TODAS las opciones de cada tiempo, en orden.
+  var mealList = (pa.dias || []).map(function(item) {
+    if (!item) return null;
+    var opts = (item.opciones || []).map(optText).filter(function(x){ return x; });
+    if (!opts.length) return null;
+    return { label: s(item.tiempo) || 'Comida', options: opts };
+  }).filter(Boolean);
   var goals = s(pa.objetivo);
   if (pa.advertencia_potasio) goals += (goals ? '\n\n' : '') + '⚠ Potasio: ' + s(pa.advertencia_potasio);
-  data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals };
+  data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals, mealList: mealList };
   var ent = data.entrenamiento || {};
   var days = [];
   if (ent.nota_seguridad || ent.objetivo) { days.push({ title: '⚠ Seguridad y objetivo', type: 'cardio', exercises: [['Leer antes de iniciar', '', '', '', (ent.objetivo ? 'Objetivo: ' + s(ent.objetivo) + '\n\n' : '') + s(ent.nota_seguridad)]] }); }
@@ -445,8 +452,9 @@ var PROMPT_PLAN = [
 'REGLAS OBLIGATORIAS:',
 '1. Cada elemento de "opciones" debe ser UNA SOLA CADENA DE TEXTO plano que describa la comida completa, p. ej. "Avena cocida con 1 taza de fruta picada y 30 g de nuez". NUNCA un objeto ni JSON anidado.',
 '2. Igual para "diagnosticos" y "recomendaciones_especiales": arreglos de cadenas de texto, no de objetos.',
-'3. Usa exactamente los valores de "tiempo" mostrados (Desayuno, Colacion matutina, Comida, Colacion vespertina, Cena).',
-'4. Responde SOLO con el JSON, sin texto antes ni después, sin ```json ni comentarios.'
+'3. Los "tiempo" de comida se adaptan a cada paciente: usa los que correspondan (por defecto Desayuno, Colacion matutina, Comida, Colacion vespertina, Cena), pero puedes agregar, quitar o renombrar tiempos segun el caso (p. ej. "Recena", "Pre-entreno", o solo 3 comidas). La app los muestra tal cual, en orden.',
+'4. Cada comida puede tener el numero de opciones que necesites (1, 2, 3 o mas); la app muestra todas. No rellenes opciones de mas solo por completar.',
+'5. Responde SOLO con el JSON, sin texto antes ni después, sin ```json ni comentarios.'
 ].join('\n');
 
 var copyPromptBtn = document.getElementById('copyPromptBtn');
