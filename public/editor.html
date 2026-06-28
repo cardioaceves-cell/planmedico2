@@ -391,6 +391,45 @@ function mapSpanishPlan(data) {
   return data;
 }
 
+// Encuentra el objeto {...} balanceado más largo que sí parsea como JSON,
+// respetando cadenas (ignora llaves dentro de comillas).
+function lastBalancedObject(text) {
+  var best = null;
+  for (var start = 0; start < text.length; start++) {
+    if (text[start] !== '{') continue;
+    var depth = 0, inStr = false, esc = false;
+    for (var i = start; i < text.length; i++) {
+      var c = text[i];
+      if (inStr) {
+        if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false;
+      } else if (c === '"') { inStr = true; }
+      else if (c === '{') { depth++; }
+      else if (c === '}') {
+        depth--;
+        if (depth === 0) {
+          var cand = text.slice(start, i + 1);
+          try { JSON.parse(cand); if (!best || cand.length > best.length) best = cand; } catch (e) {}
+          break;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+// Extrae el JSON de la respuesta de Claude, aunque venga con el informe clínico
+// antes: intenta parseo directo, luego un bloque ```json ... ```, luego el
+// objeto {...} balanceado más grande del texto.
+function extractJson(raw) {
+  raw = String(raw || '').trim();
+  try { return JSON.parse(raw); } catch (e) {}
+  var fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) { try { return JSON.parse(fence[1].trim()); } catch (e) {} }
+  var obj = lastBalancedObject(raw);
+  if (obj) return JSON.parse(obj);
+  throw new Error('no-json');
+}
+
 document.getElementById('saveBtn').addEventListener('click', function() {
   var raw = document.getElementById('jsonArea').value.trim();
   var err = document.getElementById('jsonError');
@@ -398,7 +437,7 @@ document.getElementById('saveBtn').addEventListener('click', function() {
   err.textContent = '';
   box.classList.remove('show');
   var parsed;
-  try { parsed = JSON.parse(raw); } catch(e) { err.textContent = 'JSON invalido. Copia el codigo completo que te dio Claude.'; return; }
+  try { parsed = extractJson(raw); } catch(e) { err.textContent = 'No encontre un JSON valido. Pega la respuesta de Claude (informe + bloque JSON) o solo el bloque JSON.'; return; }
   parsed = mapSpanishPlan(parsed);
   adminFetch('/api/patients', {
     method: 'POST',
@@ -422,39 +461,76 @@ document.getElementById('copyBtn').addEventListener('click', function() {
 });
 
 var PROMPT_PLAN = [
-'Genera el plan médico de [NOMBRE DEL PACIENTE] como un único bloque de JSON válido para mi app, siguiendo EXACTAMENTE esta estructura en español:',
+'NUTRICIÓN CLÍNICA CARDIOVASCULAR',
+'',
+'Actúa como nutriólogo clínico cardiovascular con enfoque en cardiopatías, insuficiencia cardiaca crónica, obesidad, diabetes, dislipidemia, hipertensión, enfermedad renal, sarcopenia, caquexia cardiaca y fragilidad.',
+'',
+'Usa, cuando aplique: MNA-SF, GLIM Criteria, SICA-HF, criterios de riesgo nutricional, ESPEN, ESC, AHA/ACC/HFSA y evidencia clínica actualizada.',
+'',
+'Genera PRIMERO un informe clínico en secciones, y AL FINAL un único bloque JSON para la app.',
+'',
+'ESTRUCTURA DEL INFORME:',
+'',
+'A) Datos generales del paciente: nombre, edad, sexo, peso, talla, IMC, composición corporal si está disponible, diagnóstico médico principal, comorbilidades, medicamentos actuales con dosis y frecuencia.',
+'',
+'B) Diagnóstico nutricional: evaluación MNA-SF, GLIM y SICA-HF si hay datos suficientes; riesgo de malnutrición, sarcopenia o caquexia; factores de alto riesgo; requerimientos energéticos kcal/día; requerimientos proteicos g/kg/día; distribución de macronutrientes; micronutrientes relevantes; sodio; líquidos; fibra; consideraciones por enfermedad renal, diabetes, obesidad, IC o fragilidad.',
+'',
+'C) Objetivo nutricional: objetivo principal, objetivos secundarios, metas clínicas y funcionales, restricciones de seguridad.',
+'',
+'D) Plan alimenticio clínico: plan semanal con 5 tiempos de comida (desayuno, colación matutina, comida, colación vespertina, cena), 4 opciones intercambiables por tiempo, equivalentes nutricionales por porción, adaptación a comorbilidades, control de sodio y líquidos, densidad proteico-calórica cuando aplique. Marcas comerciales (Walmart México) solo si se solicita; si no hay disponibilidad actualizada, advertir que debe verificarse.',
+'',
+'E) Suplementación: solo con justificación clínica; especificar dosis, momento de consumo, contraindicaciones y precauciones. Considerar proteína de suero, creatina, omega-3, vitamina D, hierro, fibra, suplementos orales especializados u otros. No recomendar si hay contraindicación o falta información crítica.',
+'',
+'F) Recomendaciones clave: 5 a 10 puntos accionables, señales de alarma, monitorización sugerida.',
+'',
+'ENTRENAMIENTO, EJERCICIO Y REHABILITACIÓN CARDIOVASCULAR:',
+'',
+'Verifica (si no se aportan): diagnóstico cardiovascular, estabilidad clínica, síntomas, NYHA o capacidad funcional, TA, FC, ritmo, FEVI, medicamentos relevantes, comorbilidades, restricciones, objetivo físico, nivel de experiencia, frecuencia disponible, tiempo por sesión, lugar y equipo, lesiones o limitaciones. Si hay cardiopatía relevante, prioriza seguridad y rehabilitación cardiaca. Si faltan datos críticos, genera una propuesta conservadora.',
+'',
+'Cada sesión debe incluir: nombre/semana/día, objetivo de la sesión, instrucciones previas, calentamiento, ejercicios (nombre, series, repeticiones o tiempo, RPE o % 1RM, descanso, nota técnica), enfriamiento/movilidad, recomendaciones post-entrenamiento, nutrición peri-entrenamiento si aplica, puntuación 1-10, preguntas de retroalimentación (cómo te sentiste; ligero/justo/pesado; disnea, dolor torácico, mareo, palpitaciones o fatiga), progresión semanal y criterios de descarga, ajuste o suspensión.',
+'',
+'Principios: sobrecarga progresiva, recuperación, especificidad, adherencia, variedad estratégica, técnica, seguridad cardiovascular e individualización.',
+'',
+'================  BLOQUE JSON PARA LA APP  ================',
+'Al final, genera un bloque JSON válido, congruente con el informe, con esta estructura EXACTA. Si faltan medicamentos, usa arreglo vacío; no inventes datos.',
 '',
 '{',
-'  "paciente": { "nombre": "", "edad": "", "peso_kg": "", "talla_cm": "", "diagnosticos": ["", ""] },',
-'  "medicamentos": [',
-'    { "nombre": "", "dosis": "", "via": "", "frecuencia": "", "nota": "" }',
-'  ],',
-'  "diagnostico_nutricional": { "requerimientos": { "kcal_dia": "", "proteina_g_dia": "", "carbohidratos": "", "grasas": "", "fibra": "", "sodio": "", "liquidos": "" } },',
+'  "paciente": {',
+'    "nombre": "", "edad": "", "sexo": "", "peso_kg": "", "talla_cm": "", "imc": "",',
+'    "diagnosticos": [], "comorbilidades": [],',
+'    "medicamentos": [ { "nombre": "", "dosis": "", "via": "", "frecuencia": "", "horario": "", "nota": "" } ]',
+'  },',
+'  "diagnostico_nutricional": {',
+'    "mna_sf": "", "glim": "", "sica_hf": "", "riesgos": [],',
+'    "requerimientos": { "kcal_dia": "", "proteina_g_dia": "", "proteina_g_kg_dia": "", "carbohidratos": "", "grasas": "", "fibra": "", "sodio": "", "liquidos": "" }',
+'  },',
 '  "plan_alimenticio": {',
-'    "objetivo": "",',
-'    "advertencia_potasio": "",',
+'    "objetivo": "", "advertencia_potasio": "",',
 '    "dias": [',
-'      { "tiempo": "Desayuno", "opciones": ["", ""] },',
-'      { "tiempo": "Colacion matutina", "opciones": ["", ""] },',
-'      { "tiempo": "Comida", "opciones": ["", ""] },',
-'      { "tiempo": "Colacion vespertina", "opciones": ["", ""] },',
-'      { "tiempo": "Cena", "opciones": ["", ""] }',
+'      { "tiempo": "Desayuno", "opciones": ["", "", "", ""] },',
+'      { "tiempo": "Colacion matutina", "opciones": ["", "", "", ""] },',
+'      { "tiempo": "Comida", "opciones": ["", "", "", ""] },',
+'      { "tiempo": "Colacion vespertina", "opciones": ["", "", "", ""] },',
+'      { "tiempo": "Cena", "opciones": ["", "", "", ""] }',
 '    ]',
 '  },',
 '  "entrenamiento": {',
-'    "objetivo": "", "nota_seguridad": "", "semanas": "",',
+'    "objetivo": "", "nota_seguridad": "", "semanas": "", "frecuencia": "",',
 '    "sesiones": [ { "tipo": "", "frecuencia": "", "duracion": "", "intensidad": "", "nota": "" } ]',
 '  },',
 '  "suplementacion": [ { "nombre": "", "dosis": "", "momento": "", "justificacion": "" } ],',
-'  "recomendaciones_especiales": ["", ""]',
+'  "recomendaciones_especiales": [],',
+'  "seguridad_y_datos_faltantes": []',
 '}',
 '',
-'REGLAS OBLIGATORIAS:',
-'1. Cada elemento de "opciones" debe ser UNA SOLA CADENA DE TEXTO plano que describa la comida completa, p. ej. "Avena cocida con 1 taza de fruta picada y 30 g de nuez". NUNCA un objeto ni JSON anidado.',
-'2. Igual para "diagnosticos" y "recomendaciones_especiales": arreglos de cadenas de texto, no de objetos.',
-'3. Los "tiempo" de comida se adaptan a cada paciente: usa los que correspondan (por defecto Desayuno, Colacion matutina, Comida, Colacion vespertina, Cena), pero puedes agregar, quitar o renombrar tiempos segun el caso (p. ej. "Recena", "Pre-entreno", o solo 3 comidas). La app los muestra tal cual, en orden.',
-'4. Cada comida puede tener el numero de opciones que necesites (1, 2, 3 o mas); la app muestra todas. No rellenes opciones de mas solo por completar.',
-'5. Responde SOLO con el JSON, sin texto antes ni después, sin ```json ni comentarios.'
+'REGLAS OBLIGATORIAS DEL JSON (para que la app lo lea bien):',
+'1. Cada elemento de "opciones" debe ser UNA SOLA CADENA DE TEXTO plano que describa la comida completa, con su porción y preparación dentro del mismo texto, p. ej. "Avena cocida (1 taza) con manzana picada y 30 g de nuez". NUNCA un objeto ni JSON anidado.',
+'2. "diagnosticos", "comorbilidades", "riesgos", "recomendaciones_especiales" y "seguridad_y_datos_faltantes" son arreglos de CADENAS DE TEXTO, no de objetos.',
+'3. "medicamentos" son objetos con nombre, dosis, via, frecuencia, horario y nota. Si no hay medicamentos, usa [].',
+'4. "sesiones" de entrenamiento son objetos con tipo, frecuencia, duracion, intensidad y nota.',
+'5. Por defecto 5 tiempos de comida con 4 opciones cada uno, pero los tiempos y el número de opciones se adaptan a cada paciente (puedes agregar "Recena" o "Pre-entreno", o usar solo 3 comidas). La app muestra los tiempos y opciones tal cual, en orden.',
+'6. El JSON debe ser válido: sin comentarios, sin comas finales (trailing commas), con todas las llaves entre comillas dobles.',
+'7. Coloca el informe clínico primero y el bloque JSON al final, dentro de un bloque ```json ... ``` para identificarlo con claridad.'
 ].join('\n');
 
 var copyPromptBtn = document.getElementById('copyPromptBtn');
