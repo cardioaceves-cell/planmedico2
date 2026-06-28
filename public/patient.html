@@ -582,13 +582,31 @@ function buildMealList(n) {
   }).filter(function(m) { return m.options.length; });
 }
 
+// Quita el prefijo "Op. N —" del texto, ya que la pestaña ya numera la opción.
+function cleanOpt(text) {
+  return String(text == null ? '' : text).replace(/^\s*op(?:ci[oó]n)?\.?\s*\d+\s*[—–\-:.]+\s*/i, '');
+}
+
+// Celda de requerimiento: si el valor ya trae su unidad (g, mg, %, ml...), la
+// respeta; si es solo número, le agrega la unidad por defecto.
+function statCell(label, value, unit) {
+  var v = (value == null) ? '' : String(value).trim();
+  // Escapamos < y & para que valores como "<1.5" o "<2 g" se muestren tal cual.
+  var esc = v.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  var inner;
+  if (!v) inner = '-';
+  else if (/[a-zA-Z%]/.test(v)) inner = esc; // ya trae unidad propia
+  else inner = esc + ' <span class="stat-unit">' + unit + '</span>';
+  return '<div class="stat-box"><div class="stat-label">' + label + '</div><div class="stat-val">' + inner + '</div></div>';
+}
+
 function renderNutricion() {
   var n = (DATA && DATA.nutrition) || {};
   var html = '<div class="section"><div class="section-title">Requerimientos diarios</div><div class="stat-grid">';
-  [['Energia', n.kcal, 'kcal/dia'], ['Proteina', n.protein, 'g/dia'], ['Hidratos', n.carbs, 'g/dia'], ['Grasas', n.fat, '%'], ['Fibra', n.fiber, 'g/dia'], ['Sodio', n.sodium, 'g/dia']].forEach(function(s) {
-    html += '<div class="stat-box"><div class="stat-label">' + s[0] + '</div><div class="stat-val">' + (s[1] || '-') + ' <span class="stat-unit">' + s[2] + '</span></div></div>';
+  [['Energia', n.kcal, 'kcal/dia'], ['Proteina', n.protein, 'g/dia'], ['Hidratos', n.carbs, 'g/dia'], ['Grasas', n.fat, 'g/dia'], ['Fibra', n.fiber, 'g/dia'], ['Sodio', n.sodium, 'g/dia']].forEach(function(s) {
+    html += statCell(s[0], s[1], s[2]);
   });
-  html += '</div><div class="stat-box" style="margin-bottom:0"><div class="stat-label">Liquidos</div><div class="stat-val">' + (n.liquids || '-') + ' <span class="stat-unit">L/dia</span></div></div></div>';
+  html += '</div>' + statCell('Liquidos', n.liquids, 'L/dia').replace('class="stat-box"', 'class="stat-box" style="margin-bottom:0"') + '</div>';
   var list = buildMealList(n);
   html += '<div class="section"><div class="section-title">Plan de alimentacion</div>';
   if (!list.length) {
@@ -608,7 +626,7 @@ function renderNutricion() {
       }
       html += '<div class="opt-tabs">' + tabBtns + '</div>';
     }
-    html += '<div class="opt-content">' + (opts[cur] || '<span style="color:#bbb">Sin contenido</span>') + '</div></div>';
+    html += '<div class="opt-content">' + (opts[cur] ? cleanOpt(opts[cur]) : '<span style="color:#bbb">Sin contenido</span>') + '</div></div>';
   });
   html += '</div>';
   if (n.goals) html += '<div class="section"><div class="section-title">Objetivos</div><div class="indications-box"><div class="indications-text">' + n.goals + '</div></div></div>';
