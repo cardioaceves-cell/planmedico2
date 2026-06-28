@@ -414,6 +414,25 @@ function getAlertTime(realIdx, suffix) {
 // medicamentos, plan_alimenticio, entrenamiento, diagnostico_nutricional...)
 // al esquema inglés que la app renderiza. Si ya viene en inglés con contenido,
 // lo deja igual.
+// Convierte una opción de comida a texto legible. Si ya es texto, la deja igual;
+// si es objeto (como a veces lo genera la IA), arma una frase en vez de volcar JSON.
+function optText(o) {
+  if (o == null) return '';
+  if (typeof o === 'string') return o;
+  if (typeof o !== 'object') return String(o);
+  var nombre = o.alimento || o.opcion || o.descripcion || o.nombre || o.platillo || o.texto || o.comida || '';
+  var cant = o.cantidad || o.porcion || o.medida || o.gramos || o.cantidad_g || '';
+  var extra = o.preparacion || o.nota || o.indicacion || o.observacion || '';
+  var t = String(nombre).trim();
+  if (cant) t += t ? ' (' + cant + ')' : String(cant);
+  if (extra) t += t ? ' — ' + extra : String(extra);
+  if (!t.trim()) {
+    t = Object.keys(o).map(function(k) { return o[k]; })
+         .filter(function(v) { return v != null && typeof v !== 'object'; }).join(' ');
+  }
+  return t.trim();
+}
+
 function mapSpanishPlan(data) {
   if (!data || typeof data !== 'object') return data;
   var hasEng = data.patient && (data.patient.name || (Array.isArray(data.meds) && data.meds.length));
@@ -438,7 +457,7 @@ function mapSpanishPlan(data) {
   var pa = data.plan_alimenticio || {};
   var meals = { desayuno: [], colacion_m: [], comida: [], colacion_v: [], cena: [] };
   function mealKey(t) { t = s(t).toLowerCase(); t = t.normalize ? t.normalize('NFD').replace(/[̀-ͯ]/g, '') : t; if (t.indexOf('desayuno') === 0) return 'desayuno'; if (t.indexOf('matutina') !== -1) return 'colacion_m'; if (t.indexOf('vespertina') !== -1) return 'colacion_v'; if (t.indexOf('comida') === 0 || t.indexOf('almuerzo') !== -1) return 'comida'; if (t.indexOf('cena') === 0) return 'cena'; return null; }
-  (pa.dias || []).forEach(function(item) { if (!item) return; var k = mealKey(item.tiempo); if (k && item.opciones && item.opciones.length) { meals[k] = item.opciones.map(function(o) { return (typeof o === 'string') ? o : JSON.stringify(o); }); } });
+  (pa.dias || []).forEach(function(item) { if (!item) return; var k = mealKey(item.tiempo); if (k && item.opciones && item.opciones.length) { meals[k] = item.opciones.map(optText).filter(function(x){ return x; }); } });
   var goals = s(pa.objetivo);
   if (pa.advertencia_potasio) goals += (goals ? '\n\n' : '') + '⚠ Potasio: ' + s(pa.advertencia_potasio);
   data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals };
