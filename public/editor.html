@@ -383,8 +383,22 @@ function mapSpanishPlan(data) {
   data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals, mealList: mealList };
   var ent = data.entrenamiento || {};
   var days = [];
-  if (ent.nota_seguridad || ent.objetivo) { days.push({ title: '⚠ Seguridad y objetivo', type: 'cardio', exercises: [['Leer antes de iniciar', '', '', '', (ent.objetivo ? 'Objetivo: ' + s(ent.objetivo) + '\n\n' : '') + s(ent.nota_seguridad)]] }); }
-  (ent.sesiones || []).forEach(function(se) { if (!se) return; var tx = (s(se.tipo) + ' ' + s(se.nota) + ' ' + s(se.intensidad)).toLowerCase(); var type = (tx.indexOf('fuerza') !== -1 || tx.indexOf('fortalec') !== -1 || tx.indexOf('pesas') !== -1 || tx.indexOf('resistenc') !== -1) ? 'fuerza' : 'cardio'; days.push({ title: s(se.tipo) || 'Sesión', type: type, exercises: [[s(se.tipo) || 'Actividad', s(se.frecuencia), s(se.duracion), s(se.intensidad), s(se.nota)]] }); });
+  function tipoEnt(txt) { txt = String(txt || '').toLowerCase(); return (txt.indexOf('fuerza') !== -1 || txt.indexOf('fortalec') !== -1 || txt.indexOf('pesas') !== -1 || txt.indexOf('resistenc') !== -1) ? 'fuerza' : 'cardio'; }
+  var cab = '';
+  if (ent.objetivo) cab += 'Objetivo: ' + s(ent.objetivo);
+  if (ent.frecuencia) cab += (cab ? '\n\n' : '') + 'Frecuencia: ' + s(ent.frecuencia);
+  if (ent.nota_seguridad) cab += (cab ? '\n\n' : '') + s(ent.nota_seguridad);
+  if (cab || ent.semaforo) days.push({ title: '⚠ Seguridad y objetivo', safety: true, rich: true, semaforo: s(ent.semaforo), head: cab, exercises: [] });
+  (ent.sesiones || []).forEach(function(se) {
+    if (!se) return;
+    if (Array.isArray(se.ejercicios)) {
+      var exs = se.ejercicios.map(function(e) { e = e || {}; return { nombre: s(e.nombre || e.ejercicio), series: s(e.series), reps: s(e.repeticiones || e.reps || e.tiempo), inten: s(e.intensidad || e.rpe), descanso: s(e.descanso), nota: s(e.nota || e.tecnica || e.nota_tecnica || e.observacion) }; }).filter(function(e) { return e.nombre; });
+      var type = (s(se.tipo).toLowerCase().indexOf('fuerza') !== -1) ? 'fuerza' : tipoEnt(s(se.nombre) + ' ' + s(se.tipo) + ' ' + s(se.objetivo));
+      days.push({ title: s(se.nombre) || s(se.tipo) || 'Sesión', type: type, rich: true, objetivo: s(se.objetivo), calentamiento: s(se.calentamiento), enfriamiento: s(se.enfriamiento), progresion: s(se.progresion), alarma: s(se.senales_alarma || se.senales || se.alarma), exercises: exs });
+    } else {
+      days.push({ title: s(se.tipo) || 'Sesión', type: tipoEnt(s(se.tipo) + ' ' + s(se.nota) + ' ' + s(se.intensidad)), rich: false, simple: true, freq: s(se.frecuencia), dur: s(se.duracion), inten: s(se.intensidad), nota: s(se.nota), exercises: [] });
+    }
+  });
   data.exercise = { days: days, weeks: s(ent.semanas || (data.exercise && data.exercise.weeks) || '') };
   var ind = s(data.indications);
   if (data.suplementacion && data.suplementacion.length) { ind += (ind ? '\n\n' : '') + 'SUPLEMENTACIÓN:\n' + data.suplementacion.map(function(x) { return '• ' + s(x.nombre) + (x.dosis ? ' ' + s(x.dosis) : '') + (x.momento ? ' (' + s(x.momento) + ')' : '') + (x.justificacion ? ' — ' + s(x.justificacion) : ''); }).join('\n'); }
@@ -517,8 +531,10 @@ var PROMPT_PLAN = [
 '    ]',
 '  },',
 '  "entrenamiento": {',
-'    "objetivo": "", "nota_seguridad": "", "semanas": "", "frecuencia": "",',
-'    "sesiones": [ { "tipo": "", "frecuencia": "", "duracion": "", "intensidad": "", "nota": "" } ]',
+'    "objetivo": "", "semaforo": "verde", "nota_seguridad": "", "semanas": "", "frecuencia": "",',
+'    "sesiones": [',
+'      { "nombre": "Semana 1 · Dia 1 — Aerobico", "tipo": "cardio", "objetivo": "", "calentamiento": "", "ejercicios": [ { "nombre": "", "series": "", "repeticiones": "", "intensidad": "", "descanso": "", "nota": "" } ], "enfriamiento": "", "progresion": "", "senales_alarma": "" }',
+'    ]',
 '  },',
 '  "suplementacion": [ { "nombre": "", "dosis": "", "momento": "", "justificacion": "" } ],',
 '  "recomendaciones_especiales": [],',
@@ -529,7 +545,7 @@ var PROMPT_PLAN = [
 '1. Cada elemento de "opciones" debe ser UNA SOLA CADENA DE TEXTO plano que describa la comida completa, con su porción y preparación dentro del mismo texto, p. ej. "Avena cocida (1 taza) con manzana picada y 30 g de nuez". NUNCA un objeto ni JSON anidado.',
 '2. "diagnosticos", "comorbilidades", "riesgos", "recomendaciones_especiales" y "seguridad_y_datos_faltantes" son arreglos de CADENAS DE TEXTO, no de objetos.',
 '3. "medicamentos" son objetos con nombre, dosis, via, frecuencia, horario y nota. Si no hay medicamentos, usa [].',
-'4. "sesiones" de entrenamiento son objetos con tipo, frecuencia, duracion, intensidad y nota.',
+'4. "sesiones" de entrenamiento son objetos individualizados con: nombre (semana y dia), tipo ("cardio" o "fuerza"), objetivo, calentamiento, una lista "ejercicios" (cada uno objeto con nombre, series, repeticiones o tiempo, intensidad —RPE, % FCmax o % 1RM—, descanso y nota tecnica), enfriamiento, progresion y senales_alarma. "semaforo" es "verde", "amarillo" o "rojo" segun el riesgo cardiovascular. Individualiza cada sesion segun el paciente; no repitas rutinas genericas.',
 '5. Por defecto 5 tiempos de comida con 4 opciones cada uno, pero los tiempos y el número de opciones se adaptan a cada paciente (puedes agregar "Recena" o "Pre-entreno", o usar solo 3 comidas). La app muestra los tiempos y opciones tal cual, en orden.',
 '6. El JSON debe ser válido: sin comentarios, sin comas finales (trailing commas), con todas las llaves entre comillas dobles.',
 '7. Coloca el informe clínico primero y el bloque JSON al final, dentro de un bloque ```json ... ``` para identificarlo con claridad.'

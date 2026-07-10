@@ -470,8 +470,22 @@ function mapSpanishPlan(data) {
   data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals, mealList: mealList };
   var ent = data.entrenamiento || {};
   var days = [];
-  if (ent.nota_seguridad || ent.objetivo) { days.push({ title: '⚠ Seguridad y objetivo', type: 'cardio', exercises: [['Leer antes de iniciar', '', '', '', (ent.objetivo ? 'Objetivo: ' + s(ent.objetivo) + '\n\n' : '') + s(ent.nota_seguridad)]] }); }
-  (ent.sesiones || []).forEach(function(se) { if (!se) return; var tx = (s(se.tipo) + ' ' + s(se.nota) + ' ' + s(se.intensidad)).toLowerCase(); var type = (tx.indexOf('fuerza') !== -1 || tx.indexOf('fortalec') !== -1 || tx.indexOf('pesas') !== -1 || tx.indexOf('resistenc') !== -1) ? 'fuerza' : 'cardio'; days.push({ title: s(se.tipo) || 'Sesión', type: type, exercises: [[s(se.tipo) || 'Actividad', s(se.frecuencia), s(se.duracion), s(se.intensidad), s(se.nota)]] }); });
+  function tipoEnt(txt) { txt = String(txt || '').toLowerCase(); return (txt.indexOf('fuerza') !== -1 || txt.indexOf('fortalec') !== -1 || txt.indexOf('pesas') !== -1 || txt.indexOf('resistenc') !== -1) ? 'fuerza' : 'cardio'; }
+  var cab = '';
+  if (ent.objetivo) cab += 'Objetivo: ' + s(ent.objetivo);
+  if (ent.frecuencia) cab += (cab ? '\n\n' : '') + 'Frecuencia: ' + s(ent.frecuencia);
+  if (ent.nota_seguridad) cab += (cab ? '\n\n' : '') + s(ent.nota_seguridad);
+  if (cab || ent.semaforo) days.push({ title: '⚠ Seguridad y objetivo', safety: true, rich: true, semaforo: s(ent.semaforo), head: cab, exercises: [] });
+  (ent.sesiones || []).forEach(function(se) {
+    if (!se) return;
+    if (Array.isArray(se.ejercicios)) {
+      var exs = se.ejercicios.map(function(e) { e = e || {}; return { nombre: s(e.nombre || e.ejercicio), series: s(e.series), reps: s(e.repeticiones || e.reps || e.tiempo), inten: s(e.intensidad || e.rpe), descanso: s(e.descanso), nota: s(e.nota || e.tecnica || e.nota_tecnica || e.observacion) }; }).filter(function(e) { return e.nombre; });
+      var type = (s(se.tipo).toLowerCase().indexOf('fuerza') !== -1) ? 'fuerza' : tipoEnt(s(se.nombre) + ' ' + s(se.tipo) + ' ' + s(se.objetivo));
+      days.push({ title: s(se.nombre) || s(se.tipo) || 'Sesión', type: type, rich: true, objetivo: s(se.objetivo), calentamiento: s(se.calentamiento), enfriamiento: s(se.enfriamiento), progresion: s(se.progresion), alarma: s(se.senales_alarma || se.senales || se.alarma), exercises: exs });
+    } else {
+      days.push({ title: s(se.tipo) || 'Sesión', type: tipoEnt(s(se.tipo) + ' ' + s(se.nota) + ' ' + s(se.intensidad)), rich: false, simple: true, freq: s(se.frecuencia), dur: s(se.duracion), inten: s(se.intensidad), nota: s(se.nota), exercises: [] });
+    }
+  });
   data.exercise = { days: days, weeks: s(ent.semanas || (data.exercise && data.exercise.weeks) || '') };
   var ind = s(data.indications);
   if (data.suplementacion && data.suplementacion.length) { ind += (ind ? '\n\n' : '') + 'SUPLEMENTACIÓN:\n' + data.suplementacion.map(function(x) { return '• ' + s(x.nombre) + (x.dosis ? ' ' + s(x.dosis) : '') + (x.momento ? ' (' + s(x.momento) + ')' : '') + (x.justificacion ? ' — ' + s(x.justificacion) : ''); }).join('\n'); }
@@ -633,26 +647,75 @@ function renderNutricion() {
   return html;
 }
 
+function semaforoBadge(sf) {
+  sf = String(sf || '').toLowerCase();
+  var map = { verde: ['#E6F7EE', '#1a7a3f', 'Seguro'], amarillo: ['#FFF3D0', '#A07800', 'Precaución'], rojo: ['#FDECEC', '#8B0000', 'Alto riesgo'] };
+  var m = map[sf]; if (!m) return '';
+  return '<span class="day-type" style="background:' + m[0] + ';color:' + m[1] + '">' + m[2] + '</span>';
+}
+function exBloque(label, txt, color) {
+  if (!txt) return '';
+  return '<div style="margin-top:10px"><div style="font-size:10px;font-weight:700;color:' + (color || '#1A2D5A') + ';text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">' + label + '</div><div style="font-size:12.5px;color:#444;line-height:1.6;white-space:pre-wrap">' + txt + '</div></div>';
+}
+// Sesión detallada (calentamiento, tabla de ejercicios, enfriamiento, progresión, alarma).
+function renderDiaRico(day, di) {
+  var h = '';
+  if (day.head) h += exBloque('Antes de iniciar', day.head, '#8B0000');
+  h += exBloque('Objetivo', day.objetivo);
+  h += exBloque('Calentamiento', day.calentamiento);
+  var exs = (day.exercises || []).filter(function(e) { return e && e.nombre; });
+  if (exs.length) {
+    var rows = '';
+    exs.forEach(function(e, ri) {
+      var id = di + '-' + ri; var extra = [];
+      if (e.descanso) extra.push('Descanso: ' + e.descanso);
+      if (e.nota) extra.push(e.nota);
+      var notaTxt = extra.join(' — ');
+      rows += '<tr><td><div>' + e.nombre + '</div>';
+      if (notaTxt) { rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota / descanso') + '</button><div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + notaTxt + '</div>'; }
+      rows += '</td><td style="text-align:center">' + (e.series || '-') + '</td><td style="text-align:center">' + (e.reps || '-') + '</td><td style="text-align:center">' + (e.inten || '-') + '</td></tr>';
+    });
+    h += '<table class="ex-table" style="margin-top:10px"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>Intensidad</th></tr>' + rows + '</table>';
+  }
+  h += exBloque('Enfriamiento', day.enfriamiento);
+  h += exBloque('Progresión', day.progresion);
+  if (day.alarma) h += '<div class="nota-body open" style="margin-top:10px;background:#FDECEC;color:#8B0000;border-left-color:#8B0000">⚠ ' + day.alarma + '</div>';
+  return h || '<div style="color:#bbb;font-size:12px">Sin detalle.</div>';
+}
+// Sesión simple (bloque básico: frecuencia, duración, intensidad, nota).
+function renderDiaSimple(day) {
+  function line(l, v) { return v ? '<div style="font-size:12.5px;color:#444;padding:2px 0"><b style="color:#1A2D5A">' + l + ':</b> ' + v + '</div>' : ''; }
+  var h = line('Frecuencia', day.freq) + line('Duración', day.dur) + line('Intensidad', day.inten);
+  if (day.nota) h += '<div class="nota-body open" style="margin-top:8px">' + day.nota + '</div>';
+  return h || '<div style="color:#bbb;font-size:12px">Sin detalle.</div>';
+}
+// Sesión heredada (planes ya guardados en formato inglés: exercises como arreglos).
+function renderDiaLegacy(day, di) {
+  var rows = '';
+  (day.exercises || []).filter(function(r) { return r && r[0]; }).forEach(function(row, ri) {
+    var id = di + '-' + ri; var nota = row[4] || '';
+    rows += '<tr><td><div>' + row[0] + '</div>';
+    if (nota) { rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota tecnica') + '</button><div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + nota + '</div>'; }
+    rows += '</td><td style="text-align:center">' + (row[1] || '-') + '</td><td style="text-align:center">' + (row[2] || '-') + '</td><td style="text-align:center">' + (row[3] || '-') + '</td></tr>';
+  });
+  return '<table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table>';
+}
 function renderEjercicio() {
   var ex = (DATA && DATA.exercise) || {};
+  var days = ex.days || [];
   var html = '<div class="section"><div class="section-title">Programa semanal</div>';
-  (ex.days || []).forEach(function(day, di) {
+  if (!days.length) html += '<div style="color:#bbb;font-size:13px;padding:4px 0">Sin programa de ejercicio cargado.</div>';
+  days.forEach(function(day, di) {
     day = day || {};
-    var rows = '';
-    (day.exercises || []).filter(function(r) { return r && r[0]; }).forEach(function(row, ri) {
-      var id = di + '-' + ri;
-      var nota = row[4] || '';
-      rows += '<tr><td><div>' + row[0] + '</div>';
-      if (nota) {
-        rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota tecnica') + '</button>';
-        rows += '<div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + nota + '</div>';
-      }
-      rows += '</td><td style="text-align:center">' + (row[1] || '-') + '</td><td style="text-align:center">' + (row[2] || '-') + '</td><td style="text-align:center">' + (row[3] || '-') + '</td></tr>';
-    });
+    var abierto = !!day.safety;
+    var body = day.rich ? renderDiaRico(day, di) : (day.simple ? renderDiaSimple(day) : renderDiaLegacy(day, di));
     html += '<div class="ex-day"><div class="day-header" data-toggle-day="' + di + '">';
     html += '<span class="day-title">' + (day.title || '-') + '</span>';
-    html += '<div style="display:flex;align-items:center;gap:8px"><span class="day-type ' + (day.type || '') + '">' + (day.type === 'fuerza' ? 'Fuerza' : 'Cardio') + '</span><span class="chevron" id="chev' + di + '">▾</span></div>';
-    html += '</div><div class="day-body" id="dayBody' + di + '"><table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table></div></div>';
+    html += '<div style="display:flex;align-items:center;gap:6px">';
+    if (day.semaforo) html += semaforoBadge(day.semaforo);
+    if (!day.safety) html += '<span class="day-type ' + (day.type || 'cardio') + '">' + (day.type === 'fuerza' ? 'Fuerza' : 'Cardio') + '</span>';
+    html += '<span class="chevron ' + (abierto ? 'open' : '') + '" id="chev' + di + '">▾</span></div>';
+    html += '</div><div class="day-body ' + (abierto ? 'open' : '') + '" id="dayBody' + di + '">' + body + '</div></div>';
   });
   html += '</div>';
   if (ex.weeks) html += '<div class="section"><div class="section-title">Duracion</div><div class="info-box" style="border-left-color:#8B0000"><div class="info-value">Programa de ' + ex.weeks + ' semanas</div></div></div>';
