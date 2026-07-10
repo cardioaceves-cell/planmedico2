@@ -869,14 +869,31 @@ function saveRecs() {
   data.indications = ind;
   data.recomendaciones_especiales = recs;
   var btn = document.getElementById('recSaveBtn'); btn.disabled = true; btn.textContent = 'Guardando...';
+  // Reactiva el botón pase lo que pase (evita que se quede congelado).
+  function reactivar() { btn.disabled = false; btn.textContent = 'Guardar'; }
+  // Timeout duro: si la red no responde en 20s, aborta y avisa (no se congela).
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var vencido = false;
+  var reloj = setTimeout(function() { vencido = true; if (ctrl) ctrl.abort(); }, 20000);
   // PUT conserva el MISMO link y respalda la versión anterior. Se pasa 'free' para no cambiarlo.
   adminFetch('/api/patients/' + recEdit.id, {
     method: 'PUT', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ data: data, free: recEdit.free })
-  }).then(function(r) { return r.json(); }).then(function(res) {
-    if (res && res.ok) { showToast('Recomendaciones guardadas ✓'); closeRecEditor(); }
-    else { showToast('No se pudo guardar'); btn.disabled = false; btn.textContent = 'Guardar'; }
-  }).catch(function() { showToast('Error al guardar'); btn.disabled = false; btn.textContent = 'Guardar'; });
+    body: JSON.stringify({ data: data, free: recEdit.free }),
+    signal: ctrl ? ctrl.signal : undefined
+  }).then(function(r) {
+    clearTimeout(reloj);
+    // Verifica el estado HTTP real antes de leer el cuerpo.
+    if (!r.ok) { showToast('No se pudo guardar (error ' + r.status + ')'); reactivar(); return; }
+    return r.json().then(function(res) {
+      if (res && res.ok) { showToast('Recomendaciones guardadas ✓'); closeRecEditor(); }
+      else { showToast('No se pudo guardar' + (res && res.error ? ': ' + res.error : '')); reactivar(); }
+    });
+  }).catch(function(err) {
+    clearTimeout(reloj);
+    if (vencido) showToast('La conexión tardó demasiado. Revisa tu internet e intenta de nuevo.');
+    else showToast('Error de conexión al guardar. Intenta de nuevo.');
+    reactivar();
+  });
 }
 
 // El modal está más abajo en el DOM; se enganchan sus botones al terminar de cargar.
