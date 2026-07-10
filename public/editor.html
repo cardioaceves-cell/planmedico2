@@ -570,6 +570,7 @@ function loadPatients() {
       html += '<div class="patient-actions">';
       html += '<button class="btn-icon btn-share" data-id="' + p.id + '">Link</button>';
       html += '<button class="btn-icon btn-ecg" data-id="' + p.id + '" style="background:#F0F4FF;color:#1A2D5A;border:1px solid #1A2D5A">ECG</button>';
+      html += '<button class="btn-icon btn-recs" data-id="' + p.id + '" data-name="' + String(name).replace(/"/g, '&quot;') + '" style="background:#FFF6E5;color:#A07800;border:1px solid #D4A017">Recom.</button>';
       html += '<button class="btn-icon btn-del" data-id="' + p.id + '">Borrar</button>';
       html += '</div></div>';
     });
@@ -591,6 +592,12 @@ function loadPatients() {
           body: JSON.stringify({ecg_link: link.trim()})
         }).then(function() { showToast('ECG guardado ✓'); loadPatients(); })
         .catch(function() { showToast('Error al guardar ECG'); });
+      });
+    });
+
+    list.querySelectorAll('.btn-recs').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        openRecEditor(this.getAttribute('data-id'), this.getAttribute('data-name'));
       });
     });
 
@@ -800,6 +807,100 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(function() { t.classList.remove('show'); }, 2500);
 }
+
+// ── EDITOR SIMPLE DE RECOMENDACIONES (por paciente, mismo link) ──
+var recEdit = null;  // {id, data, free}
+
+// Obtiene la lista de recomendaciones actuales del plan del paciente.
+function extractRecs(data) {
+  if (data && Array.isArray(data.recomendaciones_especiales) && data.recomendaciones_especiales.length) {
+    return data.recomendaciones_especiales.map(function(x) { return String(x == null ? '' : x).trim(); }).filter(Boolean);
+  }
+  var ind = (data && typeof data.indications === 'string') ? data.indications : '';
+  var i = ind.lastIndexOf('RECOMENDACIONES:');
+  if (i === -1) return [];
+  return ind.slice(i + 'RECOMENDACIONES:'.length).split('\n')
+    .map(function(l) { return l.replace(/^\s*[•\-*]\s*/, '').trim(); }).filter(Boolean);
+}
+
+function addRecRow(val) {
+  var box = document.getElementById('recList');
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;align-items:flex-start';
+  var ta = document.createElement('textarea');
+  ta.className = 'rec-input'; ta.value = val || ''; ta.rows = 2;
+  ta.style.cssText = 'flex:1;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;color:#1A2D5A';
+  var del = document.createElement('button');
+  del.type = 'button'; del.textContent = '✕';
+  del.style.cssText = 'background:#FDECEC;color:#C0303A;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:14px;flex:none';
+  del.onclick = function() { row.remove(); };
+  row.appendChild(ta); row.appendChild(del);
+  box.appendChild(row);
+}
+
+function renderRecInputs(recs) {
+  var box = document.getElementById('recList');
+  box.innerHTML = '';
+  (recs && recs.length ? recs : ['']).forEach(function(r) { addRecRow(r); });
+}
+
+function openRecEditor(id, name) {
+  adminFetch('/api/patients/' + id).then(function(r) { return r.json(); }).then(function(res) {
+    if (!res || !res.data) { showToast('No se pudo cargar el paciente'); return; }
+    recEdit = { id: id, data: res.data, free: !!res.free };
+    document.getElementById('recPatName').textContent = name || (res.data.patient && res.data.patient.name) || '';
+    renderRecInputs(extractRecs(res.data));
+    document.getElementById('recModal').style.display = 'flex';
+  }).catch(function() { showToast('Error al cargar el paciente'); });
+}
+
+function closeRecEditor() { document.getElementById('recModal').style.display = 'none'; recEdit = null; }
+
+function saveRecs() {
+  if (!recEdit) return;
+  var recs = Array.prototype.map.call(document.querySelectorAll('#recList .rec-input'),
+    function(el) { return el.value.trim(); }).filter(Boolean);
+  var data = recEdit.data || {};
+  // Reconstruye data.indications: quita el bloque RECOMENDACIONES previo (va al final) y reañade.
+  var ind = typeof data.indications === 'string' ? data.indications : '';
+  var i = ind.lastIndexOf('RECOMENDACIONES:');
+  if (i !== -1) ind = ind.slice(0, i).replace(/\s+$/, '');
+  if (recs.length) ind += (ind ? '\n\n' : '') + 'RECOMENDACIONES:\n' + recs.map(function(x) { return '• ' + x; }).join('\n');
+  data.indications = ind;
+  data.recomendaciones_especiales = recs;
+  var btn = document.getElementById('recSaveBtn'); btn.disabled = true; btn.textContent = 'Guardando...';
+  // PUT conserva el MISMO link y respalda la versión anterior. Se pasa 'free' para no cambiarlo.
+  adminFetch('/api/patients/' + recEdit.id, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ data: data, free: recEdit.free })
+  }).then(function(r) { return r.json(); }).then(function(res) {
+    if (res && res.ok) { showToast('Recomendaciones guardadas ✓'); closeRecEditor(); }
+    else { showToast('No se pudo guardar'); btn.disabled = false; btn.textContent = 'Guardar'; }
+  }).catch(function() { showToast('Error al guardar'); btn.disabled = false; btn.textContent = 'Guardar'; });
+}
+
+// El modal está más abajo en el DOM; se enganchan sus botones al terminar de cargar.
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('recAddBtn').addEventListener('click', function() { addRecRow(''); });
+  document.getElementById('recCancelBtn').addEventListener('click', closeRecEditor);
+  document.getElementById('recSaveBtn').addEventListener('click', saveRecs);
+  document.getElementById('recModal').addEventListener('click', function(e) { if (e.target === this) closeRecEditor(); });
+});
 </script>
+
+<!-- Modal: editor simple de recomendaciones -->
+<div id="recModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;max-width:480px;width:100%;max-height:88vh;overflow:auto;padding:22px">
+    <div style="font-size:17px;font-weight:800;color:#8B0000;margin-bottom:2px">Recomendaciones</div>
+    <div id="recPatName" style="font-size:12px;color:#888;margin-bottom:4px"></div>
+    <div style="font-size:11.5px;color:#aaa;margin-bottom:14px">Se muestran en la pestaña <b>Medicamentos</b> del plan del paciente. Se guardan en el mismo link.</div>
+    <div id="recList"></div>
+    <button id="recAddBtn" type="button" style="width:100%;padding:10px;background:#fff;color:#1A2D5A;border:1.5px dashed #D4A017;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-top:2px">+ Agregar recomendación</button>
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button id="recCancelBtn" type="button" style="flex:1;padding:12px;background:#F0F0F0;color:#555;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">Cancelar</button>
+      <button id="recSaveBtn" type="button" style="flex:1;padding:12px;background:#8B0000;color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">Guardar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
