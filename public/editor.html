@@ -120,6 +120,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <button class="btn-copy" id="copyBtn">Copiar</button>
         </div>
         <button class="btn btn-gray" id="whatsappBtn" style="margin-top:8px">Compartir por WhatsApp</button>
+        <button class="btn btn-gray" id="qrBtn" style="margin-top:8px">Mostrar código QR</button>
       </div>
     </div>
   </div>
@@ -231,6 +232,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div style="font-size:12px;color:#ffffff;font-weight:500">Dr. Moisés Aceves · Cardiología clínica y rehabilitación cardiaca</div>
 </div>
 
+<script src="/qrcode.min.js"></script>
 <script>
 var currentLink = '';
 var selectedDays = null;
@@ -569,6 +571,7 @@ function loadPatients() {
       html += '<div class="patient-date">' + date + '</div></div>';
       html += '<div class="patient-actions">';
       html += '<button class="btn-icon btn-share" data-id="' + p.id + '">Link</button>';
+      html += '<button class="btn-icon btn-qr" data-id="' + p.id + '" data-name="' + String(name).replace(/"/g, '&quot;') + '" style="background:#EAF7EE;color:#1B7B3A;border:1px solid #1B7B3A">QR</button>';
       html += '<button class="btn-icon btn-ecg" data-id="' + p.id + '" style="background:#F0F4FF;color:#1A2D5A;border:1px solid #1A2D5A">ECG</button>';
       html += '<button class="btn-icon btn-recs" data-id="' + p.id + '" data-name="' + String(name).replace(/"/g, '&quot;') + '" style="background:#FFF6E5;color:#A07800;border:1px solid #D4A017">Recom.</button>';
       html += '<button class="btn-icon btn-del" data-id="' + p.id + '">Borrar</button>';
@@ -598,6 +601,13 @@ function loadPatients() {
     list.querySelectorAll('.btn-recs').forEach(function(btn) {
       btn.addEventListener('click', function() {
         openRecEditor(this.getAttribute('data-id'), this.getAttribute('data-name'));
+      });
+    });
+
+    list.querySelectorAll('.btn-qr').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var url = window.location.origin + '/p/' + this.getAttribute('data-id');
+        showQR(url, this.getAttribute('data-name'));
       });
     });
 
@@ -896,14 +906,66 @@ function saveRecs() {
   });
 }
 
+// ── CÓDIGO QR DEL LINK DEL PACIENTE ──
+// El QR se genera LOCALMENTE en el navegador (librería auto-alojada). El link
+// del paciente nunca se envía a ningún servicio externo — importante por privacidad.
+var qrActual = { url: '', name: '', dataUrl: '' };
+
+function showQR(url, name) {
+  if (typeof qrcode === 'undefined') { showToast('No se pudo cargar el generador de QR'); return; }
+  try {
+    var q = qrcode(0, 'M');       // 0 = tamaño automático según el largo del link
+    q.addData(url);
+    q.make();
+    var dataUrl = q.createDataURL(6, 4);   // (tamaño de celda, margen)
+    qrActual = { url: url, name: name || '', dataUrl: dataUrl };
+    document.getElementById('qrImg').src = dataUrl;
+    document.getElementById('qrName').textContent = name || '';
+    document.getElementById('qrLink').textContent = url;
+    document.getElementById('qrModal').style.display = 'flex';
+  } catch (e) { showToast('No se pudo generar el QR'); }
+}
+
+function closeQR() { document.getElementById('qrModal').style.display = 'none'; }
+
+// Descarga el QR como imagen PNG para imprimir o guardar.
+function descargarQR() {
+  if (!qrActual.dataUrl) return;
+  var a = document.createElement('a');
+  var slug = (qrActual.name || 'paciente').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'paciente';
+  a.href = qrActual.dataUrl;
+  a.download = 'QR_' + slug + '.gif';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
 // El modal está más abajo en el DOM; se enganchan sus botones al terminar de cargar.
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('recAddBtn').addEventListener('click', function() { addRecRow(''); });
   document.getElementById('recCancelBtn').addEventListener('click', closeRecEditor);
   document.getElementById('recSaveBtn').addEventListener('click', saveRecs);
   document.getElementById('recModal').addEventListener('click', function(e) { if (e.target === this) closeRecEditor(); });
+  // QR: botón del panel "link listo" (usa el link recién generado) y botones del modal.
+  document.getElementById('qrBtn').addEventListener('click', function() { if (currentLink) showQR(currentLink, ''); });
+  document.getElementById('qrCloseBtn').addEventListener('click', closeQR);
+  document.getElementById('qrDownloadBtn').addEventListener('click', descargarQR);
+  document.getElementById('qrModal').addEventListener('click', function(e) { if (e.target === this) closeQR(); });
 });
 </script>
+
+<!-- Modal: código QR del link del paciente -->
+<div id="qrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;max-width:340px;width:100%;max-height:90vh;overflow:auto;padding:22px;text-align:center">
+    <div style="font-size:17px;font-weight:800;color:#1B7B3A;margin-bottom:2px">Código QR</div>
+    <div id="qrName" style="font-size:13px;color:#555;font-weight:600;margin-bottom:2px"></div>
+    <div style="font-size:11.5px;color:#aaa;margin-bottom:14px">El paciente lo escanea con la cámara para abrir su plan.</div>
+    <img id="qrImg" alt="Código QR" style="width:230px;height:230px;image-rendering:pixelated;border:1px solid #eee;border-radius:10px;padding:8px;background:#fff">
+    <div id="qrLink" style="font-size:11px;color:#1A2D5A;background:#F0F4FF;padding:8px 10px;border-radius:8px;word-break:break-all;font-family:monospace;margin-top:12px"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button id="qrCloseBtn" type="button" style="flex:1;padding:12px;background:#F0F0F0;color:#555;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">Cerrar</button>
+      <button id="qrDownloadBtn" type="button" style="flex:1;padding:12px;background:#1B7B3A;color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">Descargar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: editor simple de recomendaciones -->
 <div id="recModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:16px">
