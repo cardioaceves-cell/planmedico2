@@ -346,10 +346,40 @@ function optText(o) {
   return t.trim();
 }
 
+// Convierte el bloque clínico "entrenamiento" (rico o simple) al formato que
+// renderiza la app. Fuente de verdad del ejercicio; se reconstruye en cada carga.
+function mapEntrenamiento(ent, prevExercise) {
+  ent = ent || {};
+  function s(v) { return (v == null) ? '' : String(v); }
+  function tipoEnt(txt) { txt = String(txt || '').toLowerCase(); return (txt.indexOf('fuerza') !== -1 || txt.indexOf('fortalec') !== -1 || txt.indexOf('pesas') !== -1 || txt.indexOf('resistenc') !== -1) ? 'fuerza' : 'cardio'; }
+  var days = [];
+  var cab = '';
+  if (ent.objetivo) cab += 'Objetivo: ' + s(ent.objetivo);
+  if (ent.frecuencia) cab += (cab ? '\n\n' : '') + 'Frecuencia: ' + s(ent.frecuencia);
+  if (ent.nota_seguridad) cab += (cab ? '\n\n' : '') + s(ent.nota_seguridad);
+  if (cab || ent.semaforo) days.push({ title: '⚠ Seguridad y objetivo', safety: true, rich: true, semaforo: s(ent.semaforo), head: cab, exercises: [] });
+  (ent.sesiones || []).forEach(function(se) {
+    if (!se) return;
+    if (Array.isArray(se.ejercicios)) {
+      var exs = se.ejercicios.map(function(e) { e = e || {}; return { nombre: s(e.nombre || e.ejercicio), series: s(e.series), reps: s(e.repeticiones || e.reps || e.tiempo), inten: s(e.intensidad || e.rpe), descanso: s(e.descanso), nota: s(e.nota || e.tecnica || e.nota_tecnica || e.observacion) }; }).filter(function(e) { return e.nombre; });
+      var type = (s(se.tipo).toLowerCase().indexOf('fuerza') !== -1) ? 'fuerza' : tipoEnt(s(se.nombre) + ' ' + s(se.tipo) + ' ' + s(se.objetivo));
+      days.push({ title: s(se.nombre) || s(se.tipo) || 'Sesión', type: type, rich: true, objetivo: s(se.objetivo), calentamiento: s(se.calentamiento), enfriamiento: s(se.enfriamiento), progresion: s(se.progresion), alarma: s(se.senales_alarma || se.senales || se.alarma), exercises: exs });
+    } else {
+      days.push({ title: s(se.tipo) || 'Sesión', type: tipoEnt(s(se.tipo) + ' ' + s(se.nota) + ' ' + s(se.intensidad)), rich: false, simple: true, freq: s(se.frecuencia), dur: s(se.duracion), inten: s(se.intensidad), nota: s(se.nota), exercises: [] });
+    }
+  });
+  return { days: days, weeks: s(ent.semanas || (prevExercise && prevExercise.weeks) || '') };
+}
+
 function mapSpanishPlan(data) {
   if (!data || typeof data !== 'object') return data;
   var hasEng = data.patient && (data.patient.name || (Array.isArray(data.meds) && data.meds.length));
-  if (hasEng) return data;
+  if (hasEng) {
+    if (data.entrenamiento && Array.isArray(data.entrenamiento.sesiones) && data.entrenamiento.sesiones.length) {
+      data.exercise = mapEntrenamiento(data.entrenamiento, data.exercise);
+    }
+    return data;
+  }
   if (!data.paciente && !data.plan_alimenticio && !data.entrenamiento && !data.medicamentos) return data;
   var P = data.paciente || {};
   function s(v) { return (v == null) ? '' : String(v); }
@@ -381,25 +411,7 @@ function mapSpanishPlan(data) {
   var goals = s(pa.objetivo);
   if (pa.advertencia_potasio) goals += (goals ? '\n\n' : '') + '⚠ Potasio: ' + s(pa.advertencia_potasio);
   data.nutrition = { kcal: s(req.kcal_dia), protein: s(req.proteina_g_dia), carbs: s(req.carbohidratos), fat: s(req.grasas), fiber: s(req.fibra || ''), sodium: s(req.sodio), liquids: s(req.liquidos), goals: goals, meals: meals, mealList: mealList };
-  var ent = data.entrenamiento || {};
-  var days = [];
-  function tipoEnt(txt) { txt = String(txt || '').toLowerCase(); return (txt.indexOf('fuerza') !== -1 || txt.indexOf('fortalec') !== -1 || txt.indexOf('pesas') !== -1 || txt.indexOf('resistenc') !== -1) ? 'fuerza' : 'cardio'; }
-  var cab = '';
-  if (ent.objetivo) cab += 'Objetivo: ' + s(ent.objetivo);
-  if (ent.frecuencia) cab += (cab ? '\n\n' : '') + 'Frecuencia: ' + s(ent.frecuencia);
-  if (ent.nota_seguridad) cab += (cab ? '\n\n' : '') + s(ent.nota_seguridad);
-  if (cab || ent.semaforo) days.push({ title: '⚠ Seguridad y objetivo', safety: true, rich: true, semaforo: s(ent.semaforo), head: cab, exercises: [] });
-  (ent.sesiones || []).forEach(function(se) {
-    if (!se) return;
-    if (Array.isArray(se.ejercicios)) {
-      var exs = se.ejercicios.map(function(e) { e = e || {}; return { nombre: s(e.nombre || e.ejercicio), series: s(e.series), reps: s(e.repeticiones || e.reps || e.tiempo), inten: s(e.intensidad || e.rpe), descanso: s(e.descanso), nota: s(e.nota || e.tecnica || e.nota_tecnica || e.observacion) }; }).filter(function(e) { return e.nombre; });
-      var type = (s(se.tipo).toLowerCase().indexOf('fuerza') !== -1) ? 'fuerza' : tipoEnt(s(se.nombre) + ' ' + s(se.tipo) + ' ' + s(se.objetivo));
-      days.push({ title: s(se.nombre) || s(se.tipo) || 'Sesión', type: type, rich: true, objetivo: s(se.objetivo), calentamiento: s(se.calentamiento), enfriamiento: s(se.enfriamiento), progresion: s(se.progresion), alarma: s(se.senales_alarma || se.senales || se.alarma), exercises: exs });
-    } else {
-      days.push({ title: s(se.tipo) || 'Sesión', type: tipoEnt(s(se.tipo) + ' ' + s(se.nota) + ' ' + s(se.intensidad)), rich: false, simple: true, freq: s(se.frecuencia), dur: s(se.duracion), inten: s(se.intensidad), nota: s(se.nota), exercises: [] });
-    }
-  });
-  data.exercise = { days: days, weeks: s(ent.semanas || (data.exercise && data.exercise.weeks) || '') };
+  data.exercise = mapEntrenamiento(data.entrenamiento, data.exercise);
   var ind = s(data.indications);
   if (data.suplementacion && data.suplementacion.length) { ind += (ind ? '\n\n' : '') + 'SUPLEMENTACIÓN:\n' + data.suplementacion.map(function(x) { return '• ' + s(x.nombre) + (x.dosis ? ' ' + s(x.dosis) : '') + (x.momento ? ' (' + s(x.momento) + ')' : '') + (x.justificacion ? ' — ' + s(x.justificacion) : ''); }).join('\n'); }
   if (data.recomendaciones_especiales && data.recomendaciones_especiales.length) { ind += (ind ? '\n\n' : '') + 'RECOMENDACIONES:\n' + data.recomendaciones_especiales.map(function(x) { return '• ' + s(x); }).join('\n'); }
