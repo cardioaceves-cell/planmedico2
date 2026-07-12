@@ -668,9 +668,11 @@ function semaforoBadge(sf) {
   var m = map[sf]; if (!m) return '';
   return '<span class="day-type" style="background:' + m[0] + ';color:' + m[1] + '">' + m[2] + '</span>';
 }
+// Escapa HTML del texto del plan (autoría médica, pero evita romper el formato).
+function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function exBloque(label, txt, color) {
   if (!txt) return '';
-  return '<div style="margin-top:10px"><div style="font-size:10px;font-weight:700;color:' + (color || '#1A2D5A') + ';text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">' + label + '</div><div style="font-size:12.5px;color:#444;line-height:1.6;white-space:pre-wrap">' + txt + '</div></div>';
+  return '<div style="margin-top:10px"><div style="font-size:10px;font-weight:700;color:' + (color || '#1A2D5A') + ';text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">' + label + '</div><div style="font-size:12.5px;color:#444;line-height:1.6;white-space:pre-wrap">' + esc(txt) + '</div></div>';
 }
 // Sesión detallada (calentamiento, tabla de ejercicios, enfriamiento, progresión, alarma).
 function renderDiaRico(day, di) {
@@ -686,22 +688,22 @@ function renderDiaRico(day, di) {
       if (e.descanso) extra.push('Descanso: ' + e.descanso);
       if (e.nota) extra.push(e.nota);
       var notaTxt = extra.join(' — ');
-      rows += '<tr><td><div>' + e.nombre + '</div>';
-      if (notaTxt) { rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota / descanso') + '</button><div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + notaTxt + '</div>'; }
-      rows += '</td><td style="text-align:center">' + (e.series || '-') + '</td><td style="text-align:center">' + (e.reps || '-') + '</td><td style="text-align:center">' + (e.inten || '-') + '</td></tr>';
+      rows += '<tr><td><div>' + esc(e.nombre) + '</div>';
+      if (notaTxt) { rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota / descanso') + '</button><div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + esc(notaTxt) + '</div>'; }
+      rows += '</td><td style="text-align:center">' + esc(e.series || '-') + '</td><td style="text-align:center">' + esc(e.reps || '-') + '</td><td style="text-align:center">' + esc(e.inten || '-') + '</td></tr>';
     });
     h += '<table class="ex-table" style="margin-top:10px"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>Intensidad</th></tr>' + rows + '</table>';
   }
   h += exBloque('Enfriamiento', day.enfriamiento);
   h += exBloque('Progresión', day.progresion);
-  if (day.alarma) h += '<div class="nota-body open" style="margin-top:10px;background:#FDECEC;color:#8B0000;border-left-color:#8B0000">⚠ ' + day.alarma + '</div>';
+  if (day.alarma) h += '<div class="nota-body open" style="margin-top:10px;background:#FDECEC;color:#8B0000;border-left-color:#8B0000">⚠ ' + esc(day.alarma) + '</div>';
   return h || '<div style="color:#bbb;font-size:12px">Sin detalle.</div>';
 }
 // Sesión simple (bloque básico: frecuencia, duración, intensidad, nota).
 function renderDiaSimple(day) {
-  function line(l, v) { return v ? '<div style="font-size:12.5px;color:#444;padding:2px 0"><b style="color:#1A2D5A">' + l + ':</b> ' + v + '</div>' : ''; }
+  function line(l, v) { return v ? '<div style="font-size:12.5px;color:#444;padding:2px 0"><b style="color:#1A2D5A">' + l + ':</b> ' + esc(v) + '</div>' : ''; }
   var h = line('Frecuencia', day.freq) + line('Duración', day.dur) + line('Intensidad', day.inten);
-  if (day.nota) h += '<div class="nota-body open" style="margin-top:8px">' + day.nota + '</div>';
+  if (day.nota) h += '<div class="nota-body open" style="margin-top:8px">' + esc(day.nota) + '</div>';
   return h || '<div style="color:#bbb;font-size:12px">Sin detalle.</div>';
 }
 // Sesión heredada (planes ya guardados en formato inglés: exercises como arreglos).
@@ -709,9 +711,9 @@ function renderDiaLegacy(day, di) {
   var rows = '';
   (day.exercises || []).filter(function(r) { return r && r[0]; }).forEach(function(row, ri) {
     var id = di + '-' + ri; var nota = row[4] || '';
-    rows += '<tr><td><div>' + row[0] + '</div>';
-    if (nota) { rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota tecnica') + '</button><div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + nota + '</div>'; }
-    rows += '</td><td style="text-align:center">' + (row[1] || '-') + '</td><td style="text-align:center">' + (row[2] || '-') + '</td><td style="text-align:center">' + (row[3] || '-') + '</td></tr>';
+    rows += '<tr><td><div>' + esc(row[0]) + '</div>';
+    if (nota) { rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota tecnica') + '</button><div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + esc(nota) + '</div>'; }
+    rows += '</td><td style="text-align:center">' + esc(row[1] || '-') + '</td><td style="text-align:center">' + esc(row[2] || '-') + '</td><td style="text-align:center">' + esc(row[3] || '-') + '</td></tr>';
   });
   return '<table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table>';
 }
@@ -725,7 +727,7 @@ function renderEjercicio() {
     var abierto = !!day.safety;
     var body = day.rich ? renderDiaRico(day, di) : (day.simple ? renderDiaSimple(day) : renderDiaLegacy(day, di));
     html += '<div class="ex-day"><div class="day-header" data-toggle-day="' + di + '">';
-    html += '<span class="day-title">' + (day.title || '-') + '</span>';
+    html += '<span class="day-title">' + esc(day.title || '-') + '</span>';
     html += '<div style="display:flex;align-items:center;gap:6px">';
     if (day.semaforo) html += semaforoBadge(day.semaforo);
     if (!day.safety) html += '<span class="day-type ' + (day.type || 'cardio') + '">' + (day.type === 'fuerza' ? 'Fuerza' : 'Cardio') + '</span>';
