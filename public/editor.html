@@ -545,7 +545,9 @@ var PROMPT_PLAN = [
 '  "entrenamiento": {',
 '    "objetivo": "", "semaforo": "verde", "nota_seguridad": "", "semanas": "", "frecuencia": "",',
 '    "sesiones": [',
-'      { "nombre": "Semana 1 · Dia 1 — Aerobico", "tipo": "cardio", "objetivo": "", "calentamiento": "", "ejercicios": [ { "nombre": "", "series": "", "repeticiones": "", "intensidad": "", "descanso": "", "nota": "" } ], "enfriamiento": "", "progresion": "", "senales_alarma": "" }',
+'      { "nombre": "Semana 1 · Dia 1 — Aerobico moderado", "tipo": "cardio", "objetivo": "", "calentamiento": "", "ejercicios": [ { "nombre": "", "series": "", "repeticiones": "", "intensidad": "", "descanso": "", "nota": "" } ], "enfriamiento": "", "progresion": "", "senales_alarma": "" },',
+'      { "nombre": "Semana 1 · Dia 2 — Fuerza", "tipo": "fuerza", "objetivo": "", "calentamiento": "", "ejercicios": [ { "nombre": "", "series": "", "repeticiones": "", "intensidad": "", "descanso": "", "nota": "" } ], "enfriamiento": "", "progresion": "", "senales_alarma": "" },',
+'      { "nombre": "Semana 1 · Dia 3 — Aerobico + movilidad", "tipo": "cardio", "objetivo": "", "calentamiento": "", "ejercicios": [ { "nombre": "", "series": "", "repeticiones": "", "intensidad": "", "descanso": "", "nota": "" } ], "enfriamiento": "", "progresion": "", "senales_alarma": "" }',
 '    ]',
 '  },',
 '  "suplementacion": [ { "nombre": "", "dosis": "", "momento": "", "justificacion": "" } ],',
@@ -558,6 +560,7 @@ var PROMPT_PLAN = [
 '2. "diagnosticos", "comorbilidades", "riesgos", "recomendaciones_especiales" y "seguridad_y_datos_faltantes" son arreglos de CADENAS DE TEXTO, no de objetos.',
 '3. "medicamentos" son objetos con nombre, dosis, via, frecuencia, horario y nota. Si no hay medicamentos, usa [].',
 '4. "sesiones" de entrenamiento son objetos individualizados con: nombre (semana y dia), tipo ("cardio" o "fuerza"), objetivo, calentamiento, una lista "ejercicios" (cada uno objeto con nombre, series, repeticiones o tiempo, intensidad —RPE, % FCmax o % 1RM—, descanso y nota tecnica), enfriamiento, progresion y senales_alarma. "semaforo" es "verde", "amarillo" o "rojo" segun el riesgo cardiovascular. Individualiza cada sesion segun el paciente; no repitas rutinas genericas.',
+'4b. OBLIGATORIO — incluye UNA sesion (objeto) por CADA dia de entrenamiento del microciclo semanal completo. Si el programa es de 3 dias/semana, "sesiones" DEBE tener 3 objetos (Dia 1, Dia 2, Dia 3); si es de 4 o 5 dias/semana, tantos objetos como dias. NUNCA entregues una sola sesion de ejemplo ni resumas el programa en un unico dia (un arreglo con una sola sesion es respuesta INCORRECTA). Si distintas semanas difieren de forma importante, agrega tambien las sesiones de esas semanas clave; la evolucion general va en "progresion" y "semanas".',
 '5. Por defecto 5 tiempos de comida con 4 opciones cada uno, pero los tiempos y el número de opciones se adaptan a cada paciente (puedes agregar "Recena" o "Pre-entreno", o usar solo 3 comidas). La app muestra los tiempos y opciones tal cual, en orden.',
 '6. El JSON debe ser válido: sin comentarios, sin comas finales (trailing commas), con todas las llaves entre comillas dobles.',
 '7. Coloca el informe clínico primero y el bloque JSON al final, dentro de un bloque ```json ... ``` para identificarlo con claridad.'
