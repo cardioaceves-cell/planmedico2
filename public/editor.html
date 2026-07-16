@@ -566,16 +566,37 @@ function lastBalancedObject(text) {
   return best;
 }
 
+// Normaliza problemas típicos al copiar/pegar: comillas tipográficas (curvas),
+// espacios no separables y caracteres invisibles (BOM, zero-width). Solo se usa
+// como reintento si el texto tal cual NO parsea, para no alterar un JSON válido.
+function _normJsonText(t) {
+  return String(t || '')
+    .replace(/[\uFEFF\u200B\u200C\u200D\u2060]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'");
+}
+// Intenta obtener un objeto JSON del texto: directo, bloque ```json```, u objeto
+// {...} balanceado más grande. Devuelve undefined si ninguno funciona.
+function _tryParseJson(raw) {
+  var cands = [raw];
+  var fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) cands.push(fence[1].trim());
+  var obj = lastBalancedObject(raw);
+  if (obj) cands.push(obj);
+  for (var i = 0; i < cands.length; i++) {
+    try { var v = JSON.parse(cands[i]); if (v && typeof v === 'object') return v; } catch (e) {}
+  }
+  return undefined;
+}
 // Extrae el JSON de la respuesta de Claude, aunque venga con el informe clínico
-// antes: intenta parseo directo, luego un bloque ```json ... ```, luego el
-// objeto {...} balanceado más grande del texto.
+// antes. Si el texto tal cual no parsea, reintenta con comillas/espacios normalizados.
 function extractJson(raw) {
   raw = String(raw || '').trim();
-  try { return JSON.parse(raw); } catch (e) {}
-  var fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fence) { try { return JSON.parse(fence[1].trim()); } catch (e) {} }
-  var obj = lastBalancedObject(raw);
-  if (obj) return JSON.parse(obj);
+  var r = _tryParseJson(raw);
+  if (r !== undefined) return r;
+  r = _tryParseJson(_normJsonText(raw));
+  if (r !== undefined) return r;
   throw new Error('no-json');
 }
 
