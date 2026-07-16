@@ -409,21 +409,26 @@ function _slugEj(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
+var EJ_STOP = {con:1,del:1,por:1,para:1,sin:1,los:1,las:1,una:1,uno:1,unos:1,unas:1,sus:1,
+  maquina:1,mancuerna:1,mancuernas:1,barra:1,polea:1,poleas:1,banco:1,cuerda:1,banda:1,
+  elastica:1,elastico:1,pie:1};
+function _toksEj(slug) { return slug.split('_').filter(function (t) { return t.length > 2 && !EJ_STOP[t]; }); }
 function fotoEjercicio(nombre) {
   var n = _slugEj(nombre);
   if (!n) return '';
   var i;
   for (i = 0; i < EJ_CATALOGO.length; i++) { if (EJ_CATALOGO[i] === n) return EJ_CATALOGO[i]; }
-  var nt = n.split('_').filter(function (t) { return t.length > 2; });
+  var nt = _toksEj(n);
   if (!nt.length) return '';
-  var best = '', bestScore = 0;
+  var best = '', bestScore = 0, bestCommon = 0;
   for (i = 0; i < EJ_CATALOGO.length; i++) {
-    var st = EJ_CATALOGO[i].split('_').filter(function (t) { return t.length > 2; });
+    var st = _toksEj(EJ_CATALOGO[i]);
     if (!st.length) continue;
     var common = 0;
     for (var k = 0; k < st.length; k++) { if (nt.indexOf(st[k]) >= 0) common++; }
+    if (!common) continue;
     var score = common / st.length;
-    if (score > bestScore) { bestScore = score; best = EJ_CATALOGO[i]; }
+    if (score > bestScore || (score === bestScore && common > bestCommon)) { bestScore = score; bestCommon = common; best = EJ_CATALOGO[i]; }
   }
   return bestScore >= 0.6 ? best : '';
 }
