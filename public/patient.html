@@ -220,6 +220,17 @@ function bindEvents() {
       if (chev) chev.classList.toggle('open');
     });
   });
+  // Expandir / contraer TODO el programa de ejercicio de un solo toque.
+  var btnExp = document.getElementById('btnExpandAll');
+  if (btnExp) {
+    btnExp.addEventListener('click', function() {
+      var abrir = this.getAttribute('data-state') !== 'open';
+      document.querySelectorAll('#mainContent .day-body').forEach(function(b) { b.classList.toggle('open', abrir); });
+      document.querySelectorAll('#mainContent .chevron').forEach(function(c) { c.classList.toggle('open', abrir); });
+      this.setAttribute('data-state', abrir ? 'open' : 'closed');
+      this.textContent = abrir ? 'Contraer todo' : 'Expandir todo';
+    });
+  }
   document.querySelectorAll('[data-toggle-nota]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var id = this.getAttribute('data-toggle-nota');
@@ -674,6 +685,97 @@ function exBloque(label, txt, color) {
   if (!txt) return '';
   return '<div style="margin-top:10px"><div style="font-size:10px;font-weight:700;color:' + (color || '#1A2D5A') + ';text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">' + label + '</div><div style="font-size:12.5px;color:#444;line-height:1.6;white-space:pre-wrap">' + esc(txt) + '</div></div>';
 }
+// ── Catálogo de ilustraciones de ejercicio (rehabilitación 1-5 + gimnasio A-J) ──
+// Portado desde el visor de Sistema_IC. Imágenes servidas como estáticos en /ej/<slug>.png.
+var EJ_CATALOGO = ["abduccion_de_cadera_en_maquina","aduccion_de_cadera_en_maquina","aerobicos_de_bajo_impacto",
+"apertura_de_brazos","aperturas_en_maquina_pec_deck","aperturas_inversas_en_maquina_pec_deck",
+"ascenso_de_escaleras","baile_de_bajo_impacto","balanceo_de_brazos",
+"bicicleta_acuatica","bicicleta_de_aire_o_air_bike","bicicleta_estacionaria",
+"bicicleta_estacionaria_reclinada","bicicleta_estacionaria_vertical","bicicleta_reclinada",
+"caminata","caminata_acuatica","caminata_con_andadera",
+"caminata_con_baston","caminata_con_inclinacion_en_banda","caminata_del_granjero_por_tiempo",
+"caminata_en_banda_sin_fin","caminata_en_pendiente_por_intervalos","caminata_lateral_con_banda",
+"caminata_lenta","caminata_rapida_caminata_lenta","carrera_por_intervalos_en_banda",
+"circuito_aerobico_por_estaciones","circulos_de_hombros","circulos_de_tobillo",
+"contraccion_de_cuadriceps","contraccion_de_gluteos","cruce_de_poleas_para_pecho",
+"crunch_abdominal_en_maquina","crunch_abdominal_en_polea_alta","curl_alternado_con_mancuernas",
+"curl_de_biceps_con_barra_ez","curl_de_biceps_con_barra_recta","curl_de_biceps_en_polea_baja",
+"curl_de_muneca_con_barra","curl_femoral_acostado","curl_femoral_sentado",
+"curl_inclinado_con_mancuernas","curl_martillo_con_mancuernas","curl_predicador_en_maquina",
+"descenso_de_escaleras","deslizamiento_de_talon","dominadas_asistidas",
+"dominadas_libres","elevacion_de_rodillas","elevacion_de_rodillas_en_silla_romana",
+"elevacion_de_talon_y_punta","elevacion_de_talones_de_pie_en_maquina","elevacion_de_talones_en_prensa_de_piernas",
+"elevacion_de_talones_sentado_en_maquina","elevacion_unilateral_de_talon_con_mancuerna","elevaciones_frontales_con_mancuernas",
+"elevaciones_frontales_en_polea","elevaciones_laterales_con_mancuernas","elevaciones_laterales_en_polea",
+"eliptica","empuje_de_cadera_en_maquina_glute_drive","empuje_de_trineo_continuo",
+"empuje_de_trineo_ligero","encogimiento_de_hombros_con_barra","entrenamiento_intervalico_de_alta_intensidad_supervisado",
+"entrenamiento_intervalico_moderado","ergometro_de_brazos","escaladora",
+"extension_de_rodilla_en_maquina","extension_de_rodilla_sentado","extension_de_triceps_con_mancuerna_sobre_la_cabeza",
+"extension_de_triceps_en_polea_con_barra","extension_de_triceps_en_polea_con_cuerda","extension_de_triceps_sobre_la_cabeza_con_cuerda",
+"face_pull","flexion_de_rodillas","flexion_extension_de_codos",
+"flexion_extension_de_tobillos","flexiones_de_brazos","fondos_asistidos_con_enfasis_en_pecho",
+"fondos_asistidos_con_enfasis_en_triceps","hip_thrust_con_barra","inclinacion_lateral_del_tronco",
+"intervalos_de_marcha_estacionaria","intervalos_en_banda_sin_fin","intervalos_en_bicicleta",
+"intervalos_en_bicicleta_estacionaria","intervalos_en_bicicleta_reclinada","intervalos_en_eliptica",
+"intervalos_en_escaladora","intervalos_en_pedalera_de_brazos","intervalos_en_remo_ergometrico",
+"intervalos_en_step_bajo","jalon_al_pecho_con_agarre_amplio","jalon_al_pecho_con_agarre_neutro",
+"jalon_con_brazos_rectos","marcha_aerobica_sobre_step","marcha_con_banda_elastica",
+"marcha_descanso_activo","marcha_en_pasillo","marcha_estacionaria",
+"marcha_sentado","mini_sentadilla","movilidad_de_cadera",
+"natacion","pajaros_o_aperturas_posteriores_con_mancuernas","patada_de_gluteo_en_polea",
+"patada_de_triceps_con_mancuerna","pedalera_de_brazos_y_piernas","peso_muerto_con_banda",
+"peso_muerto_convencional_con_barra","peso_muerto_rumano_con_barra","peso_muerto_rumano_con_mancuernas",
+"plancha_frontal","plancha_lateral","prensa_de_piernas_a_45_grados",
+"press_cerrado_con_barra","press_de_banca_con_barra","press_de_banca_con_mancuernas",
+"press_de_hombros_en_maquina","press_de_hombros_sentado_con_mancuernas","press_de_pecho_en_maquina",
+"press_frances_con_barra_ez","press_inclinado_con_barra","press_inclinado_con_mancuernas",
+"press_inclinado_en_maquina","press_landmine_unilateral","press_militar_con_barra",
+"press_pallof_en_polea","puente_de_gluteos","remo_en_barra_t",
+"remo_en_maquina_con_apoyo_de_pecho","remo_ergometrico","remo_inclinado_con_barra",
+"remo_sentado_en_polea","remo_unilateral_con_mancuerna","respiracion_profunda",
+"rotacion_de_munecas","rotacion_suave_del_tronco","salto_de_cuerda",
+"senderismo","sentadilla_a_silla","sentadilla_bulgara_con_mancuernas",
+"sentadilla_en_maquina_smith","sentadilla_frontal_con_barra","sentadilla_goblet",
+"sentadilla_goblet_ligera","sentadilla_hack","sentadilla_sissy_asistida",
+"sentadilla_trasera_con_barra","sentado_de_pie","sentado_de_pie_asistido",
+"skierg_o_simulador_de_esqui","step_de_bajo_impacto","step_down_controlado",
+"step_up_con_mancuernas","step_up_frontal","step_up_lateral",
+"stepper","subida_a_escalon_bajo","subida_de_escaleras",
+"subida_de_escalon_alternada","trote_en_banda_sin_fin","zancada_asistida",
+"zancada_estatica","zancada_inversa_con_mancuernas","zancadas_caminando_con_mancuernas"];
+function _slugEj(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+// Ilustración del catálogo según el nombre del ejercicio: coincidencia exacta o, si no,
+// por solapamiento de palabras (>=60% de los tokens del slug presentes en el nombre).
+function fotoEjercicio(nombre) {
+  var n = _slugEj(nombre);
+  if (!n) return '';
+  var i;
+  for (i = 0; i < EJ_CATALOGO.length; i++) { if (EJ_CATALOGO[i] === n) return EJ_CATALOGO[i]; }
+  var nt = n.split('_').filter(function (t) { return t.length > 2; });
+  if (!nt.length) return '';
+  var best = '', bestScore = 0;
+  for (i = 0; i < EJ_CATALOGO.length; i++) {
+    var st = EJ_CATALOGO[i].split('_').filter(function (t) { return t.length > 2; });
+    if (!st.length) continue;
+    var common = 0;
+    for (var k = 0; k < st.length; k++) { if (nt.indexOf(st[k]) >= 0) common++; }
+    var score = common / st.length;
+    if (score > bestScore) { bestScore = score; best = EJ_CATALOGO[i]; }
+  }
+  return bestScore >= 0.6 ? best : '';
+}
+// Imagen de demostración del ejercicio (o '' si no hay). Se sirve desde /ej/<slug>.png.
+function mediaEjercicio(nombre) {
+  var foto = fotoEjercicio(nombre);
+  if (!foto) return '';
+  return '<img src="/ej/' + foto + '.png" alt="Demostracion del ejercicio" loading="lazy" '
+    + 'style="width:100%;max-width:280px;border-radius:8px;border:1px solid #e0e0e0;display:block" '
+    + 'onerror="this.style.display=\'none\'">';
+}
+
 // Sesión detallada (calentamiento, tabla de ejercicios, enfriamiento, progresión, alarma).
 function renderDiaRico(day, di) {
   var h = '';
@@ -688,8 +790,14 @@ function renderDiaRico(day, di) {
       if (e.descanso) extra.push('Descanso: ' + e.descanso);
       if (e.nota) extra.push(e.nota);
       var notaTxt = extra.join(' — ');
+      var media = mediaEjercicio(e.nombre);
       rows += '<tr><td><div>' + esc(e.nombre) + '</div>';
-      if (notaTxt) { rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota / descanso') + '</button><div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + esc(notaTxt) + '</div>'; }
+      if (notaTxt || media) {
+        rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar' : ('Ver técnica' + (media ? ' / imagen' : ''))) + '</button>';
+        rows += '<div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">'
+              + (media ? '<div style="margin-bottom:6px">' + media + '</div>' : '')
+              + (notaTxt ? esc(notaTxt) : '') + '</div>';
+      }
       rows += '</td><td style="text-align:center">' + esc(e.series || '-') + '</td><td style="text-align:center">' + esc(e.reps || '-') + '</td><td style="text-align:center">' + esc(e.inten || '-') + '</td></tr>';
     });
     h += '<table class="ex-table" style="margin-top:10px"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>Intensidad</th></tr>' + rows + '</table>';
@@ -711,8 +819,14 @@ function renderDiaLegacy(day, di) {
   var rows = '';
   (day.exercises || []).filter(function(r) { return r && r[0]; }).forEach(function(row, ri) {
     var id = di + '-' + ri; var nota = row[4] || '';
+    var media = mediaEjercicio(row[0]);
     rows += '<tr><td><div>' + esc(row[0]) + '</div>';
-    if (nota) { rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar nota' : 'Ver nota tecnica') + '</button><div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">' + esc(nota) + '</div>'; }
+    if (nota || media) {
+      rows += '<button class="nota-toggle" data-toggle-nota="' + id + '">' + (notaOpen[id] ? 'Ocultar' : ('Ver técnica' + (media ? ' / imagen' : ''))) + '</button>';
+      rows += '<div class="nota-body ' + (notaOpen[id] ? 'open' : '') + '" id="nota-' + id + '">'
+            + (media ? '<div style="margin-bottom:6px">' + media + '</div>' : '')
+            + (nota ? esc(nota) : '') + '</div>';
+    }
     rows += '</td><td style="text-align:center">' + esc(row[1] || '-') + '</td><td style="text-align:center">' + esc(row[2] || '-') + '</td><td style="text-align:center">' + esc(row[3] || '-') + '</td></tr>';
   });
   return '<table class="ex-table"><tr><th>Ejercicio</th><th>Series</th><th>Reps</th><th>RPE</th></tr>' + rows + '</table>';
@@ -720,7 +834,11 @@ function renderDiaLegacy(day, di) {
 function renderEjercicio() {
   var ex = (DATA && DATA.exercise) || {};
   var days = ex.days || [];
-  var html = '<div class="section"><div class="section-title">Programa semanal</div>';
+  var html = '<div class="section">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">'
+        + '<div class="section-title" style="margin-bottom:0;flex:1">Programa semanal</div>'
+        + (days.length > 1 ? '<button id="btnExpandAll" class="opt-tab" style="white-space:nowrap" data-expand-all="1" data-state="closed">Expandir todo</button>' : '')
+        + '</div>';
   if (!days.length) html += '<div style="color:#bbb;font-size:13px;padding:4px 0">Sin programa de ejercicio cargado.</div>';
   days.forEach(function(day, di) {
     day = day || {};
